@@ -33,6 +33,6 @@ func mustGit(t *testing.T, repoPath string, args ...string) []byte {
 		repoPath: repoPath,
 	}
 	got, err := runner.run(args...)
-	require.NoError(t, err)
+	require.NoErrorf(t, err, "error running git:\noutput: %v", string(got))
 	return got
 }
