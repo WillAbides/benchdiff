@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/WillAbides/benchstatter/pkg/benchstat"
 	"github.com/stretchr/testify/require"
+	"github.com/willabides/benchdiff/pkg/benchstat"
 )
 
 func setupTestRepo(t *testing.T, path string) {

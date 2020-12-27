@@ -1,3 +1,4 @@
 tmp/
 bin/
 .bindown/
+/dist
