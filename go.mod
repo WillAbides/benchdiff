@@ -1,5 +1,9 @@
 module github.com/willabides/benchdiff
 
-go 1.14
+go 1.15
 
-require github.com/stretchr/testify v1.5.1
+require (
+	github.com/WillAbides/benchstatter v0.0.0-20201227205355-41e207fc983f
+	github.com/stretchr/testify v1.5.1
+	golang.org/x/perf v0.0.0-20201207232921-bdcc6220ee90
+)

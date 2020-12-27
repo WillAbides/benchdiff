@@ -1,0 +1,15 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/WillAbides/benchstatter/tmp/747290359
+BenchmarkDoNothing-8   	      10	  11164321 ns/op	      12 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10853508 ns/op	      14 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  11656783 ns/op	      11 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10700432 ns/op	      12 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10427720 ns/op	      12 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10712753 ns/op	      11 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10662319 ns/op	      11 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10506228 ns/op	      12 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  11475983 ns/op	      11 B/op	       0 allocs/op
+BenchmarkDoNothing-8   	      10	  10771303 ns/op	      11 B/op	       0 allocs/op
+PASS
+ok  	github.com/WillAbides/benchstatter/tmp/747290359	1.223s
