@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+workdir="$(pwd)"
+CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+bindir="$(pwd)/bin"
+
+make -s bin/benchdiff
+cd "$workdir"
+exec "$bindir/benchdiff" "$@"
