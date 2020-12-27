@@ -124,6 +124,10 @@ func (c *Differ) runBenchmarks() (result *runBenchmarksResults, err error) {
 
 // Run runs the Differ
 func (c *Differ) Run() error {
+	err := os.MkdirAll(c.ResultsDir, 0700)
+	if err != nil {
+		return err
+	}
 	res, err := c.runBenchmarks()
 	if err != nil {
 		return err
