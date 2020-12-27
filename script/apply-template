@@ -1,0 +1,44 @@
+#!/bin/sh
+
+set -e
+
+CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+
+nwo="$GITHUB_REPOSITORY"
+if [ -z "$nwo" ]; then
+  nwo=$(git remote get-url origin)
+  nwo=${nwo#"git@github.com:"}
+  nwo=${nwo#"https://github.com/"}
+  nwo=${nwo%".git"}
+fi
+
+sedi() {
+  if [ "Darwin" = "$(uname)" ]; then
+    sed -i '' "$1" "$2"
+  else
+    sed -i "$1" "$2"
+  fi
+}
+
+reponame=$(echo "$nwo" | cut -d "/" -f2)
+downcased_reponame="$(echo "$reponame" | tr '[:upper:]' '[:lower:]')"
+
+sedi "s|WillAbides/goproject-tmpl|$nwo|g" README.md
+sedi "s|goproject-tmpl|$reponame|g" README.md
+
+template_modulename="github.com/willabides/goproject-tmpl"
+modulename="$(echo "github.com/$nwo" | tr '[:upper:]' '[:lower:]')"
+sedi "s|$template_modulename|$modulename|g" go.mod
+
+template_pkgname="goprojecttmpl"
+pkgname="$(echo "$reponame" | tr '[:upper:]' '[:lower:]' | sed 's/-//g')"
+sedi "s|$template_pkgname|$pkgname|g" goproject-tmpl.go
+sedi "s|$template_pkgname|$pkgname|g" goproject-tmpl_test.go
+
+mv goproject-tmpl.go "$downcased_reponame.go"
+mv goproject-tmpl_test.go "${downcased_reponame}_test.go"
+
+script/update-repo-settings
+rm script/update-repo-settings
+
+rm script/apply-template

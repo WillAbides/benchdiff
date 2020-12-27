@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+
+make -s bin/gofumpt bin/handcrafted >/dev/null
+
+git ls-files -o -c --exclude-standard -- *.go **/*.go |
+  bin/handcrafted |
+  xargs bin/gofumpt -w -extra

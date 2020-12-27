@@ -1,0 +1,45 @@
+#!/bin/sh
+
+# update-repo-settings updates protected branches and a couple of other things
+# the way I like them. This can't currently be done through an action, so I need
+# to run it from home.
+
+set -e
+
+CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+
+nwo="$GITHUB_REPOSITORY"
+if [ -z "$nwo" ]; then
+  nwo=$(git remote get-url origin)
+  nwo=${nwo#"git@github.com:"}
+  nwo=${nwo#"https://github.com/"}
+  nwo=${nwo%".git"}
+fi
+
+curl -s -f \
+  -X PUT \
+  --header "authorization: Bearer $GITHUB_TOKEN" \
+  --header 'content-type: application/json' \
+  --data '{
+    "required_status_checks": {
+      "strict": true,
+      "contexts": ["cibuild"]
+    },
+     "restrictions": null,
+     "enforce_admins": false,
+     "required_pull_request_reviews": null
+  }' \
+  "https://api.github.com/repos/$nwo/branches/main/protection" > /dev/null
+
+curl -f -s \
+  -X PATCH \
+  --header "authorization: Bearer $GITHUB_TOKEN" \
+  --header 'content-type: application/json' \
+  --data '{
+  "delete_branch_on_merge": true,
+  "has_wiki": false,
+  "allow_squash_merge": false,
+  "allow_rebase_merge": false,
+  "has_projects": false
+  }' \
+  "https://api.github.com/repos/$nwo" > /dev/null

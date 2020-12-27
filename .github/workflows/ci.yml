@@ -1,0 +1,14 @@
+name: ci
+on: [push]
+jobs:
+  cibuild:
+    name: cibuild
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '~1.14.0'
+      - run: script/generate --check
+      - run: script/test
+      - run: script/lint
