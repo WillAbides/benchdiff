@@ -27,8 +27,17 @@ func tmpDir(t *testing.T) string {
 	return tmpdir
 }
 
+func mustSetEnv(t *testing.T, key, value string) {
+	t.Helper()
+	require.NoError(t, os.Setenv(key, value))
+}
+
 func mustGit(t *testing.T, repoPath string, args ...string) []byte {
 	t.Helper()
+	mustSetEnv(t, "GIT_AUTHOR_NAME", "author")
+	mustSetEnv(t, "GIT_AUTHOR_EMAIL", "author@localhost")
+	mustSetEnv(t, "GIT_COMMITTER_NAME", "committer")
+	mustSetEnv(t, "GIT_COMMITTER_EMAIL", "committer@localhost")
 	runner := &gitRunner{
 		repoPath: repoPath,
 	}
