@@ -6,30 +6,32 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
-var doNotDeleteTmpDir bool
+var preserveTmpDir bool
 
 func tmpDir(t *testing.T) string {
 	t.Helper()
 	projectTmp := filepath.FromSlash("./tmp")
 
 	err := os.MkdirAll(projectTmp, 0o700)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	tmpdir, err := ioutil.TempDir(projectTmp, "")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	t.Cleanup(func() {
-		if !doNotDeleteTmpDir {
-			require.NoError(t, os.RemoveAll(tmpdir))
+		if preserveTmpDir {
+			t.Logf("tmp dir preserved at %s", tmpdir)
+			return
 		}
+		assert.NoError(t, os.RemoveAll(tmpdir))
 	})
 	return tmpdir
 }
 
 func mustSetEnv(t *testing.T, key, value string) {
 	t.Helper()
-	require.NoError(t, os.Setenv(key, value))
+	assert.NoError(t, os.Setenv(key, value))
 }
 
 func mustGit(t *testing.T, repoPath string, args ...string) []byte {
@@ -42,6 +44,6 @@ func mustGit(t *testing.T, repoPath string, args ...string) []byte {
 		repoPath: repoPath,
 	}
 	got, err := runner.run(args...)
-	require.NoErrorf(t, err, "error running git:\noutput: %v", string(got))
+	assert.NoErrorf(t, err, "error running git:\noutput: %v", string(got))
 	return got
 }
