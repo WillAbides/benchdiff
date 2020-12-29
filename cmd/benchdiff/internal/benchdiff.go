@@ -1,4 +1,4 @@
-package benchdiff
+package internal
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	pkgbenchstat "github.com/willabides/benchdiff/pkg/benchstat"
+	"github.com/willabides/benchdiff/pkg/benchstatter"
 	"golang.org/x/perf/benchstat"
 )
 
@@ -21,8 +21,9 @@ type Benchdiff struct {
 	ResultsDir string
 	BaseRef    string
 	Path       string
+	GitCmd     string
 	Writer     io.Writer
-	Benchstat  *pkgbenchstat.Benchstat
+	Benchstat  *benchstatter.Benchstat
 	Force      bool
 	JSONOutput bool
 }
@@ -45,16 +46,16 @@ func fileExists(path string) bool {
 
 func (c *Benchdiff) gitRunner() *gitRunner {
 	return &gitRunner{
-		repoPath: c.Path,
+		gitExecutable: c.GitCmd,
+		repoPath:      c.Path,
 	}
 }
 
 func (c *Benchdiff) baseRefRunner() *refRunner {
+	gr := c.gitRunner()
 	return &refRunner{
-		ref: c.BaseRef,
-		gitRunner: gitRunner{
-			repoPath: c.Path,
-		},
+		ref:       c.BaseRef,
+		gitRunner: *gr,
 	}
 }
 
@@ -90,6 +91,7 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	}
 
 	baseFilename := fmt.Sprintf("benchdiff-%s.out", baseSHA)
+	baseFilename = filepath.Join(c.ResultsDir, baseFilename)
 	result.headSHA = headSHA
 	result.baseSHA = baseSHA
 	result.baseOutputFile = baseFilename
@@ -161,7 +163,7 @@ type RunResult struct {
 
 // RunResultOutputOptions options for RunResult.WriteOutput
 type RunResultOutputOptions struct {
-	BenchstatFormatter pkgbenchstat.OutputFormatter // default benchstat.TextFormatter(nil)
+	BenchstatFormatter benchstatter.OutputFormatter // default benchstatter.TextFormatter(nil)
 	OutputFormat       string                       // one of json or human. default: human
 }
 
@@ -171,7 +173,7 @@ func (r *RunResult) WriteOutput(w io.Writer, opts *RunResultOutputOptions) error
 		opts = new(RunResultOutputOptions)
 	}
 	finalOpts := &RunResultOutputOptions{
-		BenchstatFormatter: pkgbenchstat.TextFormatter(nil),
+		BenchstatFormatter: benchstatter.TextFormatter(nil),
 		OutputFormat:       "human",
 	}
 	if opts.BenchstatFormatter != nil {

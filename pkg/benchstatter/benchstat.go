@@ -1,5 +1,5 @@
-// Package benchstat is used to run benchstat programmatically
-package benchstat
+// Package benchstatter is used to run benchstatter programmatically
+package benchstatter
 
 import (
 	"bytes"

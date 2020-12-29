@@ -1,4 +1,4 @@
-package benchdiff
+package internal
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/willabides/benchdiff/pkg/benchstat"
+	"github.com/willabides/benchdiff/pkg/benchstatter"
 )
 
 func setupTestRepo(t *testing.T, path string) {
@@ -50,7 +50,7 @@ func TestBenchstat_Run(t *testing.T) {
 		ResultsDir: "./tmp",
 		BaseRef:    "HEAD",
 		Path:       ".",
-		Benchstat:  &benchstat.Benchstat{},
+		Benchstat:  &benchstatter.Benchstat{},
 	}
 	_, err := differ.Run()
 	require.NoError(t, err)
