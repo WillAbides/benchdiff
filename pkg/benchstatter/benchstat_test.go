@@ -1,4 +1,4 @@
-package benchstat
+package benchstatter
 
 import (
 	"bytes"

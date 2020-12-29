@@ -9,7 +9,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/willabides/benchdiff/cmd/benchdiff/internal"
-	pkgbenchstat "github.com/willabides/benchdiff/pkg/benchstat"
+	"github.com/willabides/benchdiff/pkg/benchstatter"
 	"golang.org/x/perf/benchstat"
 )
 
@@ -125,23 +125,23 @@ var sortOpts = map[string]benchstat.Order{
 	"delta": benchstat.ByDelta,
 }
 
-func buildBenchstat(opts benchstatOpts) *pkgbenchstat.Benchstat {
+func buildBenchstat(opts benchstatOpts) *benchstatter.Benchstat {
 	order := sortOpts[opts.Sort]
 	reverse := opts.ReverseSort
 	if order == nil {
 		reverse = false
 	}
-	formatter := pkgbenchstat.TextFormatter(nil)
+	formatter := benchstatter.TextFormatter(nil)
 	if opts.CSV {
-		formatter = pkgbenchstat.CSVFormatter(&pkgbenchstat.CSVFormatterOptions{
+		formatter = benchstatter.CSVFormatter(&benchstatter.CSVFormatterOptions{
 			NoRange: opts.Norange,
 		})
 	}
 	if opts.HTML {
-		formatter = pkgbenchstat.HTMLFormatter(nil)
+		formatter = benchstatter.HTMLFormatter(nil)
 	}
 
-	return &pkgbenchstat.Benchstat{
+	return &benchstatter.Benchstat{
 		DeltaTest:       deltaTestOpts[opts.DeltaTest],
 		Alpha:           opts.Alpha,
 		AddGeoMean:      opts.Geomean,

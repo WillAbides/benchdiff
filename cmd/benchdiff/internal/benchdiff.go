@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	pkgbenchstat "github.com/willabides/benchdiff/pkg/benchstat"
+	"github.com/willabides/benchdiff/pkg/benchstatter"
 	"golang.org/x/perf/benchstat"
 )
 
@@ -23,7 +23,7 @@ type Benchdiff struct {
 	Path       string
 	GitCmd     string
 	Writer     io.Writer
-	Benchstat  *pkgbenchstat.Benchstat
+	Benchstat  *benchstatter.Benchstat
 	Force      bool
 	JSONOutput bool
 }
@@ -162,7 +162,7 @@ type RunResult struct {
 
 // RunResultOutputOptions options for RunResult.WriteOutput
 type RunResultOutputOptions struct {
-	BenchstatFormatter pkgbenchstat.OutputFormatter // default benchstat.TextFormatter(nil)
+	BenchstatFormatter benchstatter.OutputFormatter // default benchstatter.TextFormatter(nil)
 	OutputFormat       string                       // one of json or human. default: human
 }
 
@@ -172,7 +172,7 @@ func (r *RunResult) WriteOutput(w io.Writer, opts *RunResultOutputOptions) error
 		opts = new(RunResultOutputOptions)
 	}
 	finalOpts := &RunResultOutputOptions{
-		BenchstatFormatter: pkgbenchstat.TextFormatter(nil),
+		BenchstatFormatter: benchstatter.TextFormatter(nil),
 		OutputFormat:       "human",
 	}
 	if opts.BenchstatFormatter != nil {
