@@ -17,7 +17,7 @@ const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchmem -count 
 
 var benchstatVars = kong.Vars{
 	"AlphaDefault":     "0.05",
-	"AlphaHelp":        `consider change significant if p < α (default 0.05)`,
+	"AlphaHelp":        `consider change significant if p < α`,
 	"CSVHelp":          `format benchstat results as CSV`,
 	"DeltaTestHelp":    `significance test to apply to delta: utest, ttest, or none`,
 	"DeltaTestDefault": `utest`,
