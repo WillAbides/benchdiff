@@ -24,4 +24,4 @@ bin/gofumpt: bin/gobin
 	bin/gobin mvdan.cc/gofumpt@$(GOFUMPT_REV)
 
 bin/benchdiff: gobuildcache
-	${GOBUILD} -o $@ ./cmd_benchdiff
+	${GOBUILD} -o $@ ./cmd/benchdiff

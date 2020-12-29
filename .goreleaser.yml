@@ -7,7 +7,7 @@ builds:
     goos:
       - linux
       - darwin
-    main: ./cmd_benchdiff
+    main: ./cmd/benchdiff
 checksum:
   name_template: 'checksums.txt'
 snapshot:
