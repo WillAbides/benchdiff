@@ -1,4 +1,4 @@
-package benchdiff
+package internal
 
 import (
 	"io/ioutil"
@@ -13,7 +13,7 @@ var preserveTmpDir bool
 
 func tmpDir(t *testing.T) string {
 	t.Helper()
-	projectTmp := filepath.FromSlash("./tmp")
+	projectTmp := filepath.FromSlash("../../../tmp")
 
 	err := os.MkdirAll(projectTmp, 0o700)
 	assert.NoError(t, err)

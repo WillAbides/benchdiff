@@ -8,7 +8,7 @@ import (
 	"text/template"
 
 	"github.com/alecthomas/kong"
-	"github.com/willabides/benchdiff"
+	"github.com/willabides/benchdiff/cmd/benchdiff/internal"
 	pkgbenchstat "github.com/willabides/benchdiff/pkg/benchstat"
 	"golang.org/x/perf/benchstat"
 )
@@ -58,6 +58,7 @@ var benchVars = kong.Vars{
 	"ForceBaseHelp":       `Rerun benchmarks on the base reference even if the output already exists.`,
 	"DegradationExitHelp": `Exit code when there is a degradation in the results.`,
 	"JSONOutputHelp":      `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
+	"GitCmdHelp":          `The executable to use for git commands.`,
 }
 
 var cli struct {
@@ -66,11 +67,12 @@ var cli struct {
 	BenchArgs       string        `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
 	BenchCmd        string        `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
 	BenchCount      int           `kong:"default=10,help=${BenchCountHelp}"`
+	DegradationExit int           `kong:"name=on-degradation,default=0,help=${DegradationExitHelp}"`
 	ForceBase       bool          `kong:"help=${ForceBaseHelp}"`
+	GitCmd          string        `kong:"default=git,help=${GitCmdHelp}"`
+	JSONOutput      bool          `kong:"help=${JSONOutputHelp}"`
 	Packages        string        `kong:"default='./...',help=${PackagesHelp}"`
 	ResultsDir      string        `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
-	DegradationExit int           `kong:"name=on-degradation,default=0,help=${DegradationExitHelp}"`
-	JSONOutput      bool          `kong:"help=${JSONOutputHelp}"`
 	BenchstatOpts   benchstatOpts `kong:"embed"`
 }
 
@@ -82,7 +84,7 @@ func main() {
 	err = tmpl.Execute(&benchArgs, cli)
 	kctx.FatalIfErrorf(err)
 
-	differ := &benchdiff.Benchdiff{
+	bd := &internal.Benchdiff{
 		BenchCmd:   cli.BenchCmd,
 		BenchArgs:  benchArgs.String(),
 		ResultsDir: cli.ResultsDir,
@@ -91,8 +93,9 @@ func main() {
 		Writer:     os.Stdout,
 		Benchstat:  buildBenchstat(cli.BenchstatOpts),
 		Force:      cli.ForceBase,
+		GitCmd:     cli.GitCmd,
 	}
-	result, err := differ.Run()
+	result, err := bd.Run()
 	kctx.FatalIfErrorf(err)
 
 	outputFormat := "human"
@@ -100,12 +103,12 @@ func main() {
 		outputFormat = "json"
 	}
 
-	err = result.WriteOutput(os.Stdout, &benchdiff.RunResultOutputOptions{
+	err = result.WriteOutput(os.Stdout, &internal.RunResultOutputOptions{
 		BenchstatFormatter: buildBenchstat(cli.BenchstatOpts).OutputFormatter,
 		OutputFormat:       outputFormat,
 	})
 	kctx.FatalIfErrorf(err)
-	if result.HasChangeType(benchdiff.DegradingChange) {
+	if result.HasChangeType(internal.DegradingChange) {
 		os.Exit(cli.DegradationExit)
 	}
 }

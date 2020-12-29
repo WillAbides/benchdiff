@@ -1,4 +1,4 @@
-package benchdiff
+package internal
 
 import (
 	"io/ioutil"

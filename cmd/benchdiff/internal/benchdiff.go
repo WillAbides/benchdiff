@@ -1,4 +1,4 @@
-package benchdiff
+package internal
 
 import (
 	"bytes"
@@ -21,6 +21,7 @@ type Benchdiff struct {
 	ResultsDir string
 	BaseRef    string
 	Path       string
+	GitCmd     string
 	Writer     io.Writer
 	Benchstat  *pkgbenchstat.Benchstat
 	Force      bool
@@ -45,16 +46,16 @@ func fileExists(path string) bool {
 
 func (c *Benchdiff) gitRunner() *gitRunner {
 	return &gitRunner{
-		repoPath: c.Path,
+		gitExecutable: c.GitCmd,
+		repoPath:      c.Path,
 	}
 }
 
 func (c *Benchdiff) baseRefRunner() *refRunner {
+	gr := c.gitRunner()
 	return &refRunner{
-		ref: c.BaseRef,
-		gitRunner: gitRunner{
-			repoPath: c.Path,
-		},
+		ref:       c.BaseRef,
+		gitRunner: *gr,
 	}
 }
 
