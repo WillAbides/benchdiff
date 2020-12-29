@@ -44,7 +44,10 @@ type benchstatOpts struct {
 	Split       string  `kong:"help=${SplitHelp},default=${SplitDefault}"`
 }
 
+var version string
+
 var benchVars = kong.Vars{
+	"version":           version,
 	"BenchCmdDefault":   `go`,
 	"BenchArgsDefault":  defaultBenchArgsTmpl,
 	"ResultsDirDefault": filepath.FromSlash("./tmp"),
@@ -59,21 +62,23 @@ var benchVars = kong.Vars{
 	"OnDegradeHelp":     `Exit code when there is a statistically significant degradation in the results.`,
 	"JSONOutputHelp":    `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
 	"GitCmdHelp":        `The executable to use for git commands.`,
+	"VersionHelp":       `Output the benchdiff version and exit.`,
 }
 
 var cli struct {
-	BaseRef       string        `kong:"default=HEAD,help=${BaseRefHelp}"`
-	Bench         string        `kong:"default='.',help=${BenchHelp}"`
-	BenchArgs     string        `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
-	BenchCmd      string        `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
-	BenchCount    int           `kong:"default=10,help=${BenchCountHelp}"`
-	OnDegrade     int           `kong:"name=on-degrade,default=0,help=${OnDegradeHelp}"`
-	ForceBase     bool          `kong:"help=${ForceBaseHelp}"`
-	GitCmd        string        `kong:"default=git,help=${GitCmdHelp}"`
-	JSONOutput    bool          `kong:"help=${JSONOutputHelp}"`
-	Packages      string        `kong:"default='./...',help=${PackagesHelp}"`
-	ResultsDir    string        `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
-	BenchstatOpts benchstatOpts `kong:"embed"`
+	BaseRef       string           `kong:"default=HEAD,help=${BaseRefHelp}"`
+	Bench         string           `kong:"default='.',help=${BenchHelp}"`
+	BenchArgs     string           `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
+	BenchCmd      string           `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
+	BenchCount    int              `kong:"default=10,help=${BenchCountHelp}"`
+	OnDegrade     int              `kong:"name=on-degrade,default=0,help=${OnDegradeHelp}"`
+	ForceBase     bool             `kong:"help=${ForceBaseHelp}"`
+	GitCmd        string           `kong:"default=git,help=${GitCmdHelp}"`
+	JSONOutput    bool             `kong:"help=${JSONOutputHelp}"`
+	Packages      string           `kong:"default='./...',help=${PackagesHelp}"`
+	ResultsDir    string           `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
+	BenchstatOpts benchstatOpts    `kong:"embed"`
+	Version       kong.VersionFlag `kong:"help=${VersionHelp}"`
 }
 
 func main() {
