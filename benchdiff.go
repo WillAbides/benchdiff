@@ -27,23 +27,12 @@ type Benchdiff struct {
 	JSONOutput bool
 }
 
-func (c *Benchdiff) baseOutputFile() (string, error) {
-	runner := &gitRunner{
-		repoPath: c.Path,
-	}
-	revision, err := runner.run("rev-parse", c.BaseRef)
-	if err != nil {
-		return "", err
-	}
-	revision = bytes.TrimSpace(revision)
-	name := fmt.Sprintf("benchstatter-%s.out", string(revision))
-	return filepath.Join(c.ResultsDir, name), nil
-}
-
 type runBenchmarksResults struct {
 	worktreeOutputFile string
 	baseOutputFile     string
 	benchmarkCmd       string
+	headSHA            string
+	baseSHA            string
 }
 
 func fileExists(path string) bool {
@@ -54,9 +43,24 @@ func fileExists(path string) bool {
 	return true
 }
 
+func (c *Benchdiff) gitRunner() *gitRunner {
+	return &gitRunner{
+		repoPath: c.Path,
+	}
+}
+
+func (c *Benchdiff) baseRefRunner() *refRunner {
+	return &refRunner{
+		ref: c.BaseRef,
+		gitRunner: gitRunner{
+			repoPath: c.Path,
+		},
+	}
+}
+
 func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	result = new(runBenchmarksResults)
-	worktreeFilename := filepath.Join(c.ResultsDir, "benchstatter-worktree.out")
+	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
 	worktreeFile, err := os.Create(worktreeFilename)
 	if err != nil {
 		return nil, err
@@ -76,11 +80,18 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		return nil, err
 	}
 
-	baseFilename, err := c.baseOutputFile()
+	headSHA, err := c.gitRunner().getRefSha("HEAD")
+	if err != nil {
+		return nil, err
+	}
+	baseSHA, err := c.gitRunner().getRefSha(c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
 
+	baseFilename := fmt.Sprintf("benchdiff-%s.out", baseSHA)
+	result.headSHA = headSHA
+	result.baseSHA = baseSHA
 	result.baseOutputFile = baseFilename
 	result.worktreeOutputFile = worktreeFilename
 
@@ -102,14 +113,8 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	baseCmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
 	baseCmd.Stdout = baseFile
 	var baseCmdErr error
-	runner := &refRunner{
-		ref: c.BaseRef,
-		gitRunner: gitRunner{
-			repoPath:      c.Path,
-			gitExecutable: "",
-		},
-	}
-	err = runner.run(func() {
+
+	err = c.baseRefRunner().run(func() {
 		baseCmdErr = baseCmd.Run()
 	})
 	if err != nil {
@@ -138,6 +143,8 @@ func (c *Benchdiff) Run() (*RunResult, error) {
 		return nil, err
 	}
 	result := &RunResult{
+		headSHA:  res.headSHA,
+		baseSHA:  res.baseSHA,
 		benchCmd: res.benchmarkCmd,
 		tables:   collection.Tables(),
 	}
@@ -146,6 +153,8 @@ func (c *Benchdiff) Run() (*RunResult, error) {
 
 // RunResult is the result of a Run
 type RunResult struct {
+	headSHA  string
+	baseSHA  string
 	benchCmd string
 	tables   []*benchstat.Table
 }
@@ -194,31 +203,39 @@ func (r *RunResult) WriteOutput(w io.Writer, opts *RunResultOutputOptions) error
 func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string) error {
 	type runResultJSON struct {
 		BenchCommand    string `json:"bench_command,omitempty"`
-		BenchstatResult string `json:"benchstat_result,omitempty"`
-	}
-	o := runResultJSON{
-		BenchCommand:    r.benchCmd,
-		BenchstatResult: benchstatResult,
+		HeadSHA         string `json:"head_sha,omitempty"`
+		BaseSHA         string `json:"base_sha,omitempty"`
+		BenchstatOutput string `json:"benchstat_output,omitempty"`
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(&o)
+	return encoder.Encode(&runResultJSON{
+		BenchCommand:    r.benchCmd,
+		BenchstatOutput: benchstatResult,
+		HeadSHA:         r.headSHA,
+		BaseSHA:         r.baseSHA,
+	})
 }
 
 func (r *RunResult) writeHumanResult(w io.Writer, benchstatResult string) error {
 	var err error
-	if r.benchCmd != "" {
-		_, err = fmt.Fprintf(w, "bench command:\n  %s\n", r.benchCmd)
-		if err != nil {
-			return err
-		}
+	_, err = fmt.Fprintf(w, "bench command:\n  %s\n", r.benchCmd)
+	if err != nil {
+		return err
 	}
-	if benchstatResult != "" {
-		_, err = fmt.Fprintf(w, "result:\n\n%s\n", benchstatResult)
-		if err != nil {
-			return err
-		}
+	_, err = fmt.Fprintf(w, "HEAD sha:\n  %s\n", r.headSHA)
+	if err != nil {
+		return err
 	}
+	_, err = fmt.Fprintf(w, "base sha:\n  %s\n", r.baseSHA)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "result:\n\n%s\n", benchstatResult)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -9,8 +9,8 @@ import (
 )
 
 func TestBenchstat_Run(t *testing.T) {
-	worktreeFile := filepath.FromSlash("./testdata/outputs/benchstatter-worktree.out")
-	baseFile := filepath.FromSlash("./testdata/outputs/benchstatter-1.out")
+	worktreeFile := filepath.FromSlash("./testdata/outputs/benchdiff-worktree.out")
+	baseFile := filepath.FromSlash("./testdata/outputs/benchdiff-1.out")
 	var buf bytes.Buffer
 	bs := &Benchstat{}
 	collection, err := bs.Run(worktreeFile, baseFile)
