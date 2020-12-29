@@ -231,7 +231,7 @@ func (r *RunResult) writeHumanResult(w io.Writer, benchstatResult string) error 
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, "result:\n\n%s\n", benchstatResult)
+	_, err = fmt.Fprintf(w, "benchstat output:\n\n%s\n", benchstatResult)
 	if err != nil {
 		return err
 	}
