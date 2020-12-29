@@ -37,9 +37,6 @@ type Benchstat struct {
 
 	// OutputFormatter determines how the output will be formatted. Default is TextFormatter
 	OutputFormatter OutputFormatter
-
-	// Writer is where to write output. Default is stdout.
-	Writer io.Writer
 }
 
 // OutputFormatter formats benchstat output
@@ -72,11 +69,7 @@ func (b *Benchstat) Run(files ...string) (*benchstat.Collection, error) {
 }
 
 // OutputTables outputs the results from tables using b.OutputFormatter
-func (b *Benchstat) OutputTables(tables []*benchstat.Table) error {
-	writer := b.Writer
-	if writer == nil {
-		writer = os.Stdout
-	}
+func (b *Benchstat) OutputTables(writer io.Writer, tables []*benchstat.Table) error {
 	formatter := b.OutputFormatter
 	if formatter == nil {
 		formatter = TextFormatter(nil)
