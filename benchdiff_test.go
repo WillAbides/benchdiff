@@ -40,11 +40,11 @@ func testInDir(t *testing.T, dir string) {
 	})
 }
 
-func TestStatter_Run(t *testing.T) {
+func TestDiffer_Run(t *testing.T) {
 	dir := tmpDir(t)
 	setupTestRepo(t, dir)
 	testInDir(t, dir)
-	statter := Differ{
+	differ := Differ{
 		BenchCmd:   "go",
 		BenchArgs:  "test -bench . -benchmem -count 10 -benchtime 10x .",
 		ResultsDir: "./tmp",
@@ -52,7 +52,9 @@ func TestStatter_Run(t *testing.T) {
 		Path:       ".",
 		Benchstat:  &benchstat.Benchstat{},
 	}
-	err := statter.Run()
+	result, err := differ.Run()
+	require.NoError(t, err)
+	err = differ.OutputResult(result)
 	require.NoError(t, err)
 }
 

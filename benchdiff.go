@@ -8,12 +8,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-)
 
-// Benchstat is an interface for a benchstat runner
-type Benchstat interface {
-	Run(files ...string) error
-}
+	pkgbenchstat "github.com/willabides/benchdiff/pkg/benchstat"
+	"golang.org/x/perf/benchstat"
+)
 
 // Differ runs benchstats and outputs their deltas
 type Differ struct {
@@ -23,7 +21,7 @@ type Differ struct {
 	BaseRef    string
 	Path       string
 	Writer     io.Writer
-	Benchstat  Benchstat
+	Benchstat  *pkgbenchstat.Benchstat
 	Force      bool
 }
 
@@ -123,14 +121,53 @@ func (c *Differ) runBenchmarks() (result *runBenchmarksResults, err error) {
 }
 
 // Run runs the Differ
-func (c *Differ) Run() error {
+func (c *Differ) Run() (*RunResult, error) {
 	err := os.MkdirAll(c.ResultsDir, 0o700)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	res, err := c.runBenchmarks()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return c.Benchstat.Run(res.baseOutputFile, res.worktreeOutputFile)
+	collection, err := c.Benchstat.Run(res.baseOutputFile, res.worktreeOutputFile)
+	if err != nil {
+		return nil, err
+	}
+	result := &RunResult{
+		tables: collection.Tables(),
+	}
+	return result, nil
 }
+
+// OutputResult outputs a Run result
+func (c *Differ) OutputResult(runResult *RunResult) error {
+	return c.Benchstat.OutputTables(runResult.tables)
+}
+
+// RunResult is the result of a Run
+type RunResult struct {
+	tables []*benchstat.Table
+}
+
+// HasChangeType returns true if the result has at least one change with the given type
+func (r *RunResult) HasChangeType(changeType BenchmarkChangeType) bool {
+	for _, table := range r.tables {
+		for _, row := range table.Rows {
+			if row.Change == int(changeType) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// BenchmarkChangeType is whether a change is an improvement or degradation
+type BenchmarkChangeType int
+
+// BenchmarkChangeType values
+const (
+	DegradingChange     = -1 // represents a statistically significant degradation
+	InsignificantChange = 0  // represents no statistically significant change
+	ImprovingChange     = 1  // represents a statistically significant improvement
+)

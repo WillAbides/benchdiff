@@ -62,12 +62,17 @@ func (b *Benchstat) Collection() *benchstat.Collection {
 }
 
 // Run runs benchstat
-func (b *Benchstat) Run(files ...string) error {
+func (b *Benchstat) Run(files ...string) (*benchstat.Collection, error) {
 	collection := b.Collection()
 	err := AddCollectionFiles(collection, files...)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	return collection, nil
+}
+
+// OutputTables outputs the results from tables using b.OutputFormatter
+func (b *Benchstat) OutputTables(tables []*benchstat.Table) error {
 	writer := b.Writer
 	if writer == nil {
 		writer = os.Stdout
@@ -76,7 +81,7 @@ func (b *Benchstat) Run(files ...string) error {
 	if formatter == nil {
 		formatter = TextFormatter(nil)
 	}
-	return formatter(writer, collection.Tables())
+	return formatter(writer, tables)
 }
 
 // AddCollectionFiles adds files to a collection

@@ -15,7 +15,9 @@ func TestBenchstat_Run(t *testing.T) {
 	bs := &Benchstat{
 		Writer: &buf,
 	}
-	err := bs.Run(worktreeFile, baseFile)
+	collection, err := bs.Run(worktreeFile, baseFile)
+	require.NoError(t, err)
+	err = bs.OutputTables(collection.Tables())
 	require.NoError(t, err)
 
 	want := `name         old time/op    new time/op    delta

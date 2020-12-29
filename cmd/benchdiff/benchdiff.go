@@ -45,29 +45,31 @@ type benchstatOpts struct {
 }
 
 var benchVars = kong.Vars{
-	"BenchCmdDefault":   `go`,
-	"BenchArgsDefault":  defaultBenchArgsTmpl,
-	"ResultsDirDefault": filepath.FromSlash("./tmp"),
-	"BenchCountHelp":    `Run each benchmark n times.`,
-	"BenchHelp":         `Run only those benchmarks matching a regular expression.`,
-	"BenchArgsHelp":     `Use these arguments to run benchmarks. It may be a template.`,
-	"PackagesHelp":      `Run benchmarks in these packages.`,
-	"BenchCmdHelp":      `The go command to use for benchmarks.`,
-	"ResultsDirHelp":    `The directory where benchmark output will be deposited.`,
-	"BaseRefHelp":       `The git ref to be used as a baseline.`,
-	"ForceBaseHelp":     `Rerun benchmarks on the base reference even if the output already exists.`,
+	"BenchCmdDefault":     `go`,
+	"BenchArgsDefault":    defaultBenchArgsTmpl,
+	"ResultsDirDefault":   filepath.FromSlash("./tmp"),
+	"BenchCountHelp":      `Run each benchmark n times.`,
+	"BenchHelp":           `Run only those benchmarks matching a regular expression.`,
+	"BenchArgsHelp":       `Use these arguments to run benchmarks. It may be a template.`,
+	"PackagesHelp":        `Run benchmarks in these packages.`,
+	"BenchCmdHelp":        `The go command to use for benchmarks.`,
+	"ResultsDirHelp":      `The directory where benchmark output will be deposited.`,
+	"BaseRefHelp":         `The git ref to be used as a baseline.`,
+	"ForceBaseHelp":       `Rerun benchmarks on the base reference even if the output already exists.`,
+	"DegradationExitHelp": `Exit code when there is a degradation in the results.`,
 }
 
 var cli struct {
-	BaseRef       string        `kong:"default=HEAD,help=${BaseRefHelp}"`
-	Bench         string        `kong:"default='.',help=${BenchHelp}"`
-	BenchArgs     string        `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
-	BenchCmd      string        `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
-	BenchCount    int           `kong:"default=10,help=${BenchCountHelp}"`
-	ForceBase     bool          `kong:"help=${ForceBaseHelp}"`
-	Packages      string        `kong:"default='./...',help=${PackagesHelp}"`
-	ResultsDir    string        `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
-	BenchstatOpts benchstatOpts `kong:"embed"`
+	BaseRef         string        `kong:"default=HEAD,help=${BaseRefHelp}"`
+	Bench           string        `kong:"default='.',help=${BenchHelp}"`
+	BenchArgs       string        `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
+	BenchCmd        string        `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
+	BenchCount      int           `kong:"default=10,help=${BenchCountHelp}"`
+	ForceBase       bool          `kong:"help=${ForceBaseHelp}"`
+	Packages        string        `kong:"default='./...',help=${PackagesHelp}"`
+	ResultsDir      string        `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
+	DegradationExit int           `kong:"type=on-degradation,default=0,help=${DegradationExitHelp}"`
+	BenchstatOpts   benchstatOpts `kong:"embed"`
 }
 
 func main() {
@@ -78,7 +80,7 @@ func main() {
 	err = tmpl.Execute(&benchArgs, cli)
 	kctx.FatalIfErrorf(err)
 
-	statter := &benchdiff.Differ{
+	differ := &benchdiff.Differ{
 		BenchCmd:   cli.BenchCmd,
 		BenchArgs:  benchArgs.String(),
 		ResultsDir: cli.ResultsDir,
@@ -88,8 +90,13 @@ func main() {
 		Benchstat:  buildBenchstat(cli.BenchstatOpts),
 		Force:      cli.ForceBase,
 	}
-	err = statter.Run()
+	result, err := differ.Run()
 	kctx.FatalIfErrorf(err)
+	err = differ.OutputResult(result)
+	kctx.FatalIfErrorf(err)
+	if result.HasChangeType(benchdiff.DegradingChange) {
+		os.Exit(cli.DegradationExit)
+	}
 }
 
 var deltaTestOpts = map[string]benchstat.DeltaTest{
