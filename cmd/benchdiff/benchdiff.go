@@ -81,8 +81,17 @@ var cli struct {
 	Version       kong.VersionFlag `kong:"help=${VersionHelp}"`
 }
 
+const description = `
+benchdiff runs go benchmarks on your current git worktree and a base ref then
+uses benchstat to show the delta.
+
+See https://github.com/willabides/benchdiff for more details.
+`
+
 func main() {
-	kctx := kong.Parse(&cli, benchstatVars, benchVars)
+	kctx := kong.Parse(&cli, benchstatVars, benchVars,
+		kong.Description(strings.TrimSpace(description)),
+	)
 	tmpl, err := template.New("").Parse(cli.BenchArgs)
 	kctx.FatalIfErrorf(err)
 	var benchArgs bytes.Buffer
