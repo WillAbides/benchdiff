@@ -2,6 +2,7 @@ package benchdiff
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -13,8 +14,8 @@ import (
 	"golang.org/x/perf/benchstat"
 )
 
-// Differ runs benchstats and outputs their deltas
-type Differ struct {
+// Benchdiff runs benchstats and outputs their deltas
+type Benchdiff struct {
 	BenchCmd   string
 	BenchArgs  string
 	ResultsDir string
@@ -23,23 +24,15 @@ type Differ struct {
 	Writer     io.Writer
 	Benchstat  *pkgbenchstat.Benchstat
 	Force      bool
-}
-
-func (c *Differ) baseOutputFile() (string, error) {
-	runner := &gitRunner{
-		repoPath: c.Path,
-	}
-	revision, err := runner.run("rev-parse", c.BaseRef)
-	if err != nil {
-		return "", err
-	}
-	revision = bytes.TrimSpace(revision)
-	name := fmt.Sprintf("benchstatter-%s.out", string(revision))
-	return filepath.Join(c.ResultsDir, name), nil
+	JSONOutput bool
 }
 
 type runBenchmarksResults struct {
-	worktreeOutputFile, baseOutputFile string
+	worktreeOutputFile string
+	baseOutputFile     string
+	benchmarkCmd       string
+	headSHA            string
+	baseSHA            string
 }
 
 func fileExists(path string) bool {
@@ -50,8 +43,24 @@ func fileExists(path string) bool {
 	return true
 }
 
-func (c *Differ) runBenchmarks() (result *runBenchmarksResults, err error) {
-	worktreeFilename := filepath.Join(c.ResultsDir, "benchstatter-worktree.out")
+func (c *Benchdiff) gitRunner() *gitRunner {
+	return &gitRunner{
+		repoPath: c.Path,
+	}
+}
+
+func (c *Benchdiff) baseRefRunner() *refRunner {
+	return &refRunner{
+		ref: c.BaseRef,
+		gitRunner: gitRunner{
+			repoPath: c.Path,
+		},
+	}
+}
+
+func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
+	result = new(runBenchmarksResults)
+	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
 	worktreeFile, err := os.Create(worktreeFilename)
 	if err != nil {
 		return nil, err
@@ -64,22 +73,27 @@ func (c *Differ) runBenchmarks() (result *runBenchmarksResults, err error) {
 	}()
 
 	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	fmt.Println(c.BenchArgs)
+	result.benchmarkCmd = cmd.String()
 	cmd.Stdout = worktreeFile
 	err = cmd.Run()
 	if err != nil {
 		return nil, err
 	}
 
-	baseFilename, err := c.baseOutputFile()
+	headSHA, err := c.gitRunner().getRefSha("HEAD")
+	if err != nil {
+		return nil, err
+	}
+	baseSHA, err := c.gitRunner().getRefSha(c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
 
-	result = &runBenchmarksResults{
-		worktreeOutputFile: worktreeFilename,
-		baseOutputFile:     baseFilename,
-	}
+	baseFilename := fmt.Sprintf("benchdiff-%s.out", baseSHA)
+	result.headSHA = headSHA
+	result.baseSHA = baseSHA
+	result.baseOutputFile = baseFilename
+	result.worktreeOutputFile = worktreeFilename
 
 	if fileExists(baseFilename) && !c.Force {
 		return result, nil
@@ -99,14 +113,8 @@ func (c *Differ) runBenchmarks() (result *runBenchmarksResults, err error) {
 	baseCmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
 	baseCmd.Stdout = baseFile
 	var baseCmdErr error
-	runner := &refRunner{
-		ref: c.BaseRef,
-		gitRunner: gitRunner{
-			repoPath:      c.Path,
-			gitExecutable: "",
-		},
-	}
-	err = runner.run(func() {
+
+	err = c.baseRefRunner().run(func() {
 		baseCmdErr = baseCmd.Run()
 	})
 	if err != nil {
@@ -120,8 +128,8 @@ func (c *Differ) runBenchmarks() (result *runBenchmarksResults, err error) {
 	return result, nil
 }
 
-// Run runs the Differ
-func (c *Differ) Run() (*RunResult, error) {
+// Run runs the Benchdiff
+func (c *Benchdiff) Run() (*RunResult, error) {
 	err := os.MkdirAll(c.ResultsDir, 0o700)
 	if err != nil {
 		return nil, err
@@ -135,19 +143,100 @@ func (c *Differ) Run() (*RunResult, error) {
 		return nil, err
 	}
 	result := &RunResult{
-		tables: collection.Tables(),
+		headSHA:  res.headSHA,
+		baseSHA:  res.baseSHA,
+		benchCmd: res.benchmarkCmd,
+		tables:   collection.Tables(),
 	}
 	return result, nil
 }
 
-// OutputResult outputs a Run result
-func (c *Differ) OutputResult(runResult *RunResult) error {
-	return c.Benchstat.OutputTables(runResult.tables)
-}
-
 // RunResult is the result of a Run
 type RunResult struct {
-	tables []*benchstat.Table
+	headSHA  string
+	baseSHA  string
+	benchCmd string
+	tables   []*benchstat.Table
+}
+
+// RunResultOutputOptions options for RunResult.WriteOutput
+type RunResultOutputOptions struct {
+	BenchstatFormatter pkgbenchstat.OutputFormatter // default benchstat.TextFormatter(nil)
+	OutputFormat       string                       // one of json or human. default: human
+}
+
+// WriteOutput outputs the result
+func (r *RunResult) WriteOutput(w io.Writer, opts *RunResultOutputOptions) error {
+	if opts == nil {
+		opts = new(RunResultOutputOptions)
+	}
+	finalOpts := &RunResultOutputOptions{
+		BenchstatFormatter: pkgbenchstat.TextFormatter(nil),
+		OutputFormat:       "human",
+	}
+	if opts.BenchstatFormatter != nil {
+		finalOpts.BenchstatFormatter = opts.BenchstatFormatter
+	}
+
+	if opts.OutputFormat != "" {
+		finalOpts.OutputFormat = opts.OutputFormat
+	}
+
+	var benchstatBuf bytes.Buffer
+	err := finalOpts.BenchstatFormatter(&benchstatBuf, r.tables)
+	if err != nil {
+		return err
+	}
+
+	var fn func(io.Writer, string) error
+	switch finalOpts.OutputFormat {
+	case "human":
+		fn = r.writeHumanResult
+	case "json":
+		fn = r.writeJSONResult
+	default:
+		return fmt.Errorf("unknown OutputFormat")
+	}
+	return fn(w, benchstatBuf.String())
+}
+
+func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string) error {
+	type runResultJSON struct {
+		BenchCommand    string `json:"bench_command,omitempty"`
+		HeadSHA         string `json:"head_sha,omitempty"`
+		BaseSHA         string `json:"base_sha,omitempty"`
+		BenchstatOutput string `json:"benchstat_output,omitempty"`
+	}
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(&runResultJSON{
+		BenchCommand:    r.benchCmd,
+		BenchstatOutput: benchstatResult,
+		HeadSHA:         r.headSHA,
+		BaseSHA:         r.baseSHA,
+	})
+}
+
+func (r *RunResult) writeHumanResult(w io.Writer, benchstatResult string) error {
+	var err error
+	_, err = fmt.Fprintf(w, "bench command:\n  %s\n", r.benchCmd)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "HEAD sha:\n  %s\n", r.headSHA)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "base sha:\n  %s\n", r.baseSHA)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "benchstat output:\n\n%s\n", benchstatResult)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // HasChangeType returns true if the result has at least one change with the given type

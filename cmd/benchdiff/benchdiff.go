@@ -18,12 +18,12 @@ const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchmem -count 
 var benchstatVars = kong.Vars{
 	"AlphaDefault":     "0.05",
 	"AlphaHelp":        `consider change significant if p < α (default 0.05)`,
-	"CSVHelp":          `print results in CSV form`,
+	"CSVHelp":          `format benchstat results as CSV`,
 	"DeltaTestHelp":    `significance test to apply to delta: utest, ttest, or none`,
 	"DeltaTestDefault": `utest`,
 	"DeltaTestEnum":    `utest,ttest,none`,
 	"GeomeanHelp":      `print the geometric mean of each file`,
-	"HTMLHelp":         `print results as an HTML table`,
+	"HTMLHelp":         `format benchstat results as CSV an HTML table`,
 	"NorangeHelp":      `suppress range columns (CSV only)`,
 	"ReverseSortHelp":  `reverse sort order`,
 	"SortHelp":         `sort by order: delta, name, none`,
@@ -57,6 +57,7 @@ var benchVars = kong.Vars{
 	"BaseRefHelp":         `The git ref to be used as a baseline.`,
 	"ForceBaseHelp":       `Rerun benchmarks on the base reference even if the output already exists.`,
 	"DegradationExitHelp": `Exit code when there is a degradation in the results.`,
+	"JSONOutputHelp":      `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
 }
 
 var cli struct {
@@ -68,7 +69,8 @@ var cli struct {
 	ForceBase       bool          `kong:"help=${ForceBaseHelp}"`
 	Packages        string        `kong:"default='./...',help=${PackagesHelp}"`
 	ResultsDir      string        `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
-	DegradationExit int           `kong:"type=on-degradation,default=0,help=${DegradationExitHelp}"`
+	DegradationExit int           `kong:"name=on-degradation,default=0,help=${DegradationExitHelp}"`
+	JSONOutput      bool          `kong:"help=${JSONOutputHelp}"`
 	BenchstatOpts   benchstatOpts `kong:"embed"`
 }
 
@@ -80,7 +82,7 @@ func main() {
 	err = tmpl.Execute(&benchArgs, cli)
 	kctx.FatalIfErrorf(err)
 
-	differ := &benchdiff.Differ{
+	differ := &benchdiff.Benchdiff{
 		BenchCmd:   cli.BenchCmd,
 		BenchArgs:  benchArgs.String(),
 		ResultsDir: cli.ResultsDir,
@@ -92,7 +94,16 @@ func main() {
 	}
 	result, err := differ.Run()
 	kctx.FatalIfErrorf(err)
-	err = differ.OutputResult(result)
+
+	outputFormat := "human"
+	if cli.JSONOutput {
+		outputFormat = "json"
+	}
+
+	err = result.WriteOutput(os.Stdout, &benchdiff.RunResultOutputOptions{
+		BenchstatFormatter: buildBenchstat(cli.BenchstatOpts).OutputFormatter,
+		OutputFormat:       outputFormat,
+	})
 	kctx.FatalIfErrorf(err)
 	if result.HasChangeType(benchdiff.DegradingChange) {
 		os.Exit(cli.DegradationExit)

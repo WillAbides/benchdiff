@@ -12,6 +12,15 @@ type gitRunner struct {
 	gitExecutable string
 }
 
+func (r *gitRunner) getRefSha(ref string) (string, error) {
+	b, err := r.run("rev-parse", ref)
+	if err != nil {
+		return "", err
+	}
+	b = bytes.TrimSpace(b)
+	return string(b), nil
+}
+
 func (r *gitRunner) run(args ...string) ([]byte, error) {
 	executable := "git"
 	if r.gitExecutable != "" {
@@ -23,7 +32,12 @@ func (r *gitRunner) run(args ...string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cmd.Output()
+
+	b, err := cmd.Output()
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		err = fmt.Errorf("error running git command: %s", string(exitErr.Stderr))
+	}
+	return b, err
 }
 
 type refRunner struct {
