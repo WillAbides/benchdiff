@@ -47,22 +47,22 @@ type benchstatOpts struct {
 var version string
 
 var benchVars = kong.Vars{
-	"version":           version,
-	"BenchCmdDefault":   `go`,
-	"BenchArgsDefault":  defaultBenchArgsTmpl,
-	"ResultsDirDefault": filepath.FromSlash("./tmp"),
-	"BenchCountHelp":    `Run each benchmark n times.`,
-	"BenchHelp":         `Run only those benchmarks matching a regular expression.`,
-	"BenchArgsHelp":     `Use these arguments to run benchmarks. It may be a template.`,
-	"PackagesHelp":      `Run benchmarks in these packages.`,
-	"BenchCmdHelp":      `The go command to use for benchmarks.`,
-	"ResultsDirHelp":    `The directory where benchmark output will be deposited.`,
-	"BaseRefHelp":       `The git ref to be used as a baseline.`,
-	"ForceBaseHelp":     `Rerun benchmarks on the base reference even if the output already exists.`,
-	"OnDegradeHelp":     `Exit code when there is a statistically significant degradation in the results.`,
-	"JSONOutputHelp":    `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
-	"GitCmdHelp":        `The executable to use for git commands.`,
-	"VersionHelp":       `Output the benchdiff version and exit.`,
+	"version":          version,
+	"BenchCmdDefault":  `go`,
+	"BenchArgsDefault": defaultBenchArgsTmpl,
+	"CacheDirDefault":  filepath.FromSlash("./tmp"),
+	"BenchCountHelp":   `Run each benchmark n times.`,
+	"BenchHelp":        `Run only those benchmarks matching a regular expression.`,
+	"BenchArgsHelp":    `Use these arguments to run benchmarks. It may be a template.`,
+	"PackagesHelp":     `Run benchmarks in these packages.`,
+	"BenchCmdHelp":     `The go command to use for benchmarks.`,
+	"CacheDirHelp":     `The directory where benchmark output will kept between runs.`,
+	"BaseRefHelp":      `The git ref to be used as a baseline.`,
+	"ForceBaseHelp":    `Rerun benchmarks on the base reference even if the output already exists.`,
+	"OnDegradeHelp":    `Exit code when there is a statistically significant degradation in the results.`,
+	"JSONOutputHelp":   `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
+	"GitCmdHelp":       `The executable to use for git commands.`,
+	"VersionHelp":      `Output the benchdiff version and exit.`,
 }
 
 var cli struct {
@@ -71,12 +71,12 @@ var cli struct {
 	BenchArgs     string           `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
 	BenchCmd      string           `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
 	BenchCount    int              `kong:"default=10,help=${BenchCountHelp}"`
-	OnDegrade     int              `kong:"name=on-degrade,default=0,help=${OnDegradeHelp}"`
+	CacheDir      string           `kong:"type=dir,default=${CacheDirDefault},help=${CacheDirHelp}"`
 	ForceBase     bool             `kong:"help=${ForceBaseHelp}"`
 	GitCmd        string           `kong:"default=git,help=${GitCmdHelp}"`
 	JSONOutput    bool             `kong:"help=${JSONOutputHelp}"`
+	OnDegrade     int              `kong:"name=on-degrade,default=0,help=${OnDegradeHelp}"`
 	Packages      string           `kong:"default='./...',help=${PackagesHelp}"`
-	ResultsDir    string           `kong:"type=dir,default=${ResultsDirDefault},help=${ResultsDirHelp}"`
 	BenchstatOpts benchstatOpts    `kong:"embed"`
 	Version       kong.VersionFlag `kong:"help=${VersionHelp}"`
 }
@@ -101,7 +101,7 @@ func main() {
 	bd := &internal.Benchdiff{
 		BenchCmd:   cli.BenchCmd,
 		BenchArgs:  benchArgs.String(),
-		ResultsDir: cli.ResultsDir,
+		ResultsDir: cli.CacheDir,
 		BaseRef:    cli.BaseRef,
 		Path:       ".",
 		Writer:     os.Stdout,

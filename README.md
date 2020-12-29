@@ -35,17 +35,17 @@ Flags:
                                    be a template.
       --bench-cmd="go"             The go command to use for benchmarks.
       --bench-count=10             Run each benchmark n times.
-      --on-degrade=0               Exit code when there is a statistically
-                                   significant degradation in the results.
+      --cache-dir="./tmp"          The directory where benchmark output will
+                                   kept between runs.
       --force-base                 Rerun benchmarks on the base reference even
                                    if the output already exists.
       --git-cmd="git"              The executable to use for git commands.
       --json-output                Format output as JSON. When true the --csv
                                    and --html flags affect only the
                                    "benchstat_output" field.
+      --on-degrade=0               Exit code when there is a statistically
+                                   significant degradation in the results.
       --packages="./..."           Run benchmarks in these packages.
-      --results-dir="./tmp"        The directory where benchmark output will be
-                                   deposited.
       --alpha=0.05                 consider change significant if p < α
       --csv                        format benchstat results as CSV
       --delta-test="utest"         significance test to apply to delta: utest,

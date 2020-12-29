@@ -91,6 +91,7 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	}
 
 	baseFilename := fmt.Sprintf("benchdiff-%s.out", baseSHA)
+	baseFilename = filepath.Join(c.ResultsDir, baseFilename)
 	result.headSHA = headSHA
 	result.baseSHA = baseSHA
 	result.baseOutputFile = baseFilename
