@@ -2,30 +2,151 @@ package benchstatter
 
 import (
 	"bytes"
-	"path/filepath"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/perf/benchstat"
 )
 
 func TestBenchstat_Run(t *testing.T) {
-	worktreeFile := filepath.FromSlash("./testdata/outputs/benchdiff-worktree.out")
-	baseFile := filepath.FromSlash("./testdata/outputs/benchdiff-1.out")
-	var buf bytes.Buffer
-	bs := &Benchstat{}
-	collection, err := bs.Run(worktreeFile, baseFile)
+	pwd, err := os.Getwd()
 	require.NoError(t, err)
-	err = bs.OutputTables(&buf, collection.Tables())
-	require.NoError(t, err)
-
-	want := `name         old time/op    new time/op    delta
-DoNothing-8    1.31ms ±13%   10.89ms ± 7%  +728.87%  (p=0.000 n=10+10)
-
-name         old alloc/op   new alloc/op   delta
-DoNothing-8     32.2B ± 2%     11.4B ± 5%   -64.48%  (p=0.000 n=9+9)
-
-name         old allocs/op  new allocs/op  delta
-DoNothing-8      0.00           0.00           ~     (all equal)
-`
-	require.Equal(t, want, buf.String())
+	require.NoError(t, os.Chdir("testdata"))
+	t.Cleanup(func() {
+		t.Helper()
+		require.NoError(t, os.Chdir(pwd))
+	})
+	for _, td := range []struct {
+		golden string
+		base   string
+		head   string
+		b      *Benchstat
+	}{
+		{
+			golden: "example",
+			base:   "exampleold.txt",
+			head:   "examplenew.txt",
+			b:      new(Benchstat),
+		},
+		{
+			golden: "examplehtml",
+			base:   "exampleold.txt",
+			head:   "examplenew.txt",
+			b: &Benchstat{
+				OutputFormatter: HTMLFormatter(nil),
+			},
+		},
+		{
+			golden: "examplecsv",
+			base:   "exampleold.txt",
+			head:   "examplenew.txt",
+			b: &Benchstat{
+				OutputFormatter: CSVFormatter(nil),
+			},
+		},
+		{
+			golden: "oldnew",
+			base:   "old.txt",
+			head:   "new.txt",
+			b:      new(Benchstat),
+		},
+		{
+			golden: "oldnewgeo",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				AddGeoMean: true,
+			},
+		},
+		{
+			golden: "new4",
+			base:   "new.txt",
+			head:   "slashslash4.txt",
+			b:      new(Benchstat),
+		},
+		{
+			golden: "oldnewhtml",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				OutputFormatter: HTMLFormatter(nil),
+			},
+		},
+		{
+			golden: "oldnewcsv",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				OutputFormatter: CSVFormatter(nil),
+			},
+		},
+		{
+			golden: "oldnewttest",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				DeltaTest: benchstat.TTest,
+			},
+		},
+		{
+			golden: "packages",
+			base:   "packagesold.txt",
+			head:   "packagesnew.txt",
+			b: &Benchstat{
+				SplitBy: []string{"pkg", "goos", "goarch"},
+			},
+		},
+		{
+			golden: "units",
+			base:   "units-old.txt",
+			head:   "units-new.txt",
+			b:      new(Benchstat),
+		},
+		{
+			golden: "zero",
+			base:   "zero-old.txt",
+			head:   "zero-new.txt",
+			b: &Benchstat{
+				DeltaTest: benchstat.NoDeltaTest,
+			},
+		},
+		{
+			golden: "namesort",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				Order: benchstat.ByName,
+			},
+		},
+		{
+			golden: "deltasort",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				Order: benchstat.ByDelta,
+			},
+		},
+		{
+			golden: "rdeltasort",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				Order:        benchstat.ByDelta,
+				ReverseOrder: true,
+			},
+		},
+	} {
+		t.Run(td.golden, func(t *testing.T) {
+			result, err := td.b.Run(td.base, td.head)
+			require.NoError(t, err)
+			var buf bytes.Buffer
+			err = td.b.OutputTables(&buf, result.Tables())
+			require.NoError(t, err)
+			want, err := ioutil.ReadFile(td.golden + ".golden")
+			require.NoError(t, err)
+			require.Equal(t, string(want), buf.String())
+		})
+	}
 }
