@@ -47,6 +47,16 @@ func TestBenchstat_Run(t *testing.T) {
 			},
 		},
 		{
+			golden: "examplecsv-norange",
+			base:   "exampleold.txt",
+			head:   "examplenew.txt",
+			b: &Benchstat{
+				OutputFormatter: CSVFormatter(&CSVFormatterOptions{
+					NoRange: true,
+				}),
+			},
+		},
+		{
 			golden: "oldnew",
 			base:   "old.txt",
 			head:   "new.txt",
