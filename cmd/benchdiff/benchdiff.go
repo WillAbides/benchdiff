@@ -18,13 +18,14 @@ const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchtime {{.Ben
 var benchstatVars = kong.Vars{
 	"AlphaDefault":     "0.05",
 	"AlphaHelp":        `consider change significant if p < α`,
-	"CSVHelp":          `format benchstat results as CSV`,
+	"CSVHelp":          `format benchstat output as CSV`,
 	"DeltaTestHelp":    `significance test to apply to delta: utest, ttest, or none`,
 	"DeltaTestDefault": `utest`,
 	"DeltaTestEnum":    `utest,ttest,none`,
 	"GeomeanHelp":      `print the geometric mean of each file`,
-	"HTMLHelp":         `format benchstat results as CSV an HTML table`,
-	"NorangeHelp":      `suppress range columns (CSV only)`,
+	"HTMLHelp":         `format benchstat output as an HTML table`,
+	"MarkdownHelp":     `format benchstat output as markdown tables`,
+	"NorangeHelp":      `suppress range columns (CSV and markdown only)`,
 	"ReverseSortHelp":  `reverse sort order`,
 	"SortHelp":         `sort by order: delta, name, none`,
 	"SortEnum":         `delta,name,none`,
@@ -38,6 +39,7 @@ type benchstatOpts struct {
 	DeltaTest   string  `kong:"help=${DeltaTestHelp},default=${DeltaTestDefault},enum='utest,ttest,none'"`
 	Geomean     bool    `kong:"help=${GeomeanHelp}"`
 	HTML        bool    `kong:"help=${HTMLHelp},xor='outputformat'"`
+	Markdown    bool    `kong:"help=${MarkdownHelp}"`
 	Norange     bool    `kong:"help=${NorangeHelp}"`
 	ReverseSort bool    `kong:"help=${ReverseSortHelp}"`
 	Sort        string  `kong:"help=${SortHelp},enum=${SortEnum},default=none"`
@@ -155,6 +157,13 @@ func buildBenchstat(opts benchstatOpts) *benchstatter.Benchstat {
 	}
 	if opts.HTML {
 		formatter = benchstatter.HTMLFormatter(nil)
+	}
+	if opts.Markdown {
+		formatter = benchstatter.MarkdownFormatter(&benchstatter.MarkdownFormatterOptions{
+			CSVFormatterOptions: benchstatter.CSVFormatterOptions{
+				NoRange: opts.Norange,
+			},
+		})
 	}
 
 	return &benchstatter.Benchstat{

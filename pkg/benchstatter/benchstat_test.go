@@ -47,12 +47,32 @@ func TestBenchstat_Run(t *testing.T) {
 			},
 		},
 		{
+			golden: "examplemd",
+			base:   "exampleold.txt",
+			head:   "examplenew.txt",
+			b: &Benchstat{
+				OutputFormatter: MarkdownFormatter(nil),
+			},
+		},
+		{
 			golden: "examplecsv-norange",
 			base:   "exampleold.txt",
 			head:   "examplenew.txt",
 			b: &Benchstat{
 				OutputFormatter: CSVFormatter(&CSVFormatterOptions{
 					NoRange: true,
+				}),
+			},
+		},
+		{
+			golden: "examplemd-norange",
+			base:   "exampleold.txt",
+			head:   "examplenew.txt",
+			b: &Benchstat{
+				OutputFormatter: MarkdownFormatter(&MarkdownFormatterOptions{
+					CSVFormatterOptions: CSVFormatterOptions{
+						NoRange: true,
+					},
 				}),
 			},
 		},
@@ -68,6 +88,15 @@ func TestBenchstat_Run(t *testing.T) {
 			head:   "new.txt",
 			b: &Benchstat{
 				AddGeoMean: true,
+			},
+		},
+		{
+			golden: "oldnewgeocsv",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				OutputFormatter: CSVFormatter(nil),
+				AddGeoMean:      true,
 			},
 		},
 		{
@@ -93,6 +122,23 @@ func TestBenchstat_Run(t *testing.T) {
 			},
 		},
 		{
+			golden: "oldnewmd",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				OutputFormatter: MarkdownFormatter(nil),
+			},
+		},
+		{
+			golden: "oldnewgeomd",
+			base:   "old.txt",
+			head:   "new.txt",
+			b: &Benchstat{
+				AddGeoMean:      true,
+				OutputFormatter: MarkdownFormatter(nil),
+			},
+		},
+		{
 			golden: "oldnewttest",
 			base:   "old.txt",
 			head:   "new.txt",
@@ -106,6 +152,15 @@ func TestBenchstat_Run(t *testing.T) {
 			head:   "packagesnew.txt",
 			b: &Benchstat{
 				SplitBy: []string{"pkg", "goos", "goarch"},
+			},
+		},
+		{
+			golden: "packagescsv",
+			base:   "packagesold.txt",
+			head:   "packagesnew.txt",
+			b: &Benchstat{
+				OutputFormatter: CSVFormatter(nil),
+				SplitBy:         []string{"pkg", "goos", "goarch"},
 			},
 		},
 		{
