@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/willabides/benchdiff/pkg/benchstatter"
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/perf/benchstat"
 )
 
@@ -59,6 +61,14 @@ func (c *Benchdiff) baseRefRunner() *refRunner {
 	}
 }
 
+func (c *Benchdiff) cacheKey() string {
+	var b []byte
+	b = append(b, []byte(c.BenchCmd)...)
+	b = append(b, []byte(c.BenchArgs)...)
+	sum := sha3.Sum224(b)
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
 func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	result = new(runBenchmarksResults)
 	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
@@ -90,7 +100,7 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		return nil, err
 	}
 
-	baseFilename := fmt.Sprintf("benchdiff-%s.out", baseSHA)
+	baseFilename := fmt.Sprintf("benchdiff-%s-%s.out", baseSHA, c.cacheKey())
 	baseFilename = filepath.Join(c.ResultsDir, baseFilename)
 	result.headSHA = headSHA
 	result.baseSHA = baseSHA
