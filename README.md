@@ -30,11 +30,13 @@ Flags:
       --base-ref="HEAD"            The git ref to be used as a baseline.
       --bench="."                  Run only those benchmarks matching a regular
                                    expression.
-      --bench-args="test -bench {{.Bench}} -run '^$' -benchmem -count {{.BenchCount}} {{.Packages}}"
+      --bench-args="test -bench {{.Bench}} -run '^$' -benchtime {{.Benchtime}} -benchmem -count {{.BenchCount}} {{.Packages}}"
                                    Use these arguments to run benchmarks. It may
                                    be a template.
       --bench-cmd="go"             The go command to use for benchmarks.
       --bench-count=10             Run each benchmark n times.
+      --benchtime="1s"             The -benchtime argument for the go test
+                                   command
       --cache-dir="./tmp"          The directory where benchmark output will
                                    kept between runs.
       --force-base                 Rerun benchmarks on the base reference even

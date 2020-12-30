@@ -13,7 +13,7 @@ import (
 	"golang.org/x/perf/benchstat"
 )
 
-const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchmem -count {{.BenchCount}} {{.Packages}}`
+const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchtime {{.Benchtime}} -benchmem -count {{.BenchCount}} {{.Packages}}`
 
 var benchstatVars = kong.Vars{
 	"AlphaDefault":     "0.05",
@@ -54,6 +54,7 @@ var benchVars = kong.Vars{
 	"BenchCountHelp":   `Run each benchmark n times.`,
 	"BenchHelp":        `Run only those benchmarks matching a regular expression.`,
 	"BenchArgsHelp":    `Use these arguments to run benchmarks. It may be a template.`,
+	"BenchtimeHelp":    `The -benchtime argument for the go test command`,
 	"PackagesHelp":     `Run benchmarks in these packages.`,
 	"BenchCmdHelp":     `The go command to use for benchmarks.`,
 	"CacheDirHelp":     `The directory where benchmark output will kept between runs.`,
@@ -71,6 +72,7 @@ var cli struct {
 	BenchArgs     string           `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
 	BenchCmd      string           `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
 	BenchCount    int              `kong:"default=10,help=${BenchCountHelp}"`
+	Benchtime     string           `kong:"default='1s',help=${BenchtimeHelp}"`
 	CacheDir      string           `kong:"type=dir,default=${CacheDirDefault},help=${CacheDirHelp}"`
 	ForceBase     bool             `kong:"help=${ForceBaseHelp}"`
 	GitCmd        string           `kong:"default=git,help=${GitCmdHelp}"`
