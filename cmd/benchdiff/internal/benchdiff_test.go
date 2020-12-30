@@ -40,11 +40,12 @@ func testInDir(t *testing.T, dir string) {
 	})
 }
 
-func TestBenchstat_Run(t *testing.T) {
+func TestBenchdiff_Run(t *testing.T) {
 	dir := tmpDir(t)
 	setupTestRepo(t, dir)
 	testInDir(t, dir)
 	differ := Benchdiff{
+		GitCmd:     "git",
 		BenchCmd:   "go",
 		BenchArgs:  "test -bench . -benchmem -count 10 -benchtime 10x .",
 		ResultsDir: "./tmp",

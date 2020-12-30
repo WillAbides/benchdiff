@@ -29,21 +29,22 @@ func tmpDir(t *testing.T) string {
 	return tmpdir
 }
 
-func mustSetEnv(t *testing.T, key, value string) {
+func mustSetEnv(t *testing.T, env map[string]string) {
 	t.Helper()
-	assert.NoError(t, os.Setenv(key, value))
+	for k, v := range env {
+		assert.NoError(t, os.Setenv(k, v))
+	}
 }
 
 func mustGit(t *testing.T, repoPath string, args ...string) []byte {
 	t.Helper()
-	mustSetEnv(t, "GIT_AUTHOR_NAME", "author")
-	mustSetEnv(t, "GIT_AUTHOR_EMAIL", "author@localhost")
-	mustSetEnv(t, "GIT_COMMITTER_NAME", "committer")
-	mustSetEnv(t, "GIT_COMMITTER_EMAIL", "committer@localhost")
-	runner := &gitRunner{
-		repoPath: repoPath,
-	}
-	got, err := runner.run(args...)
+	mustSetEnv(t, map[string]string{
+		"GIT_AUTHOR_NAME":     "author",
+		"GIT_AUTHOR_EMAIL":    "author@localhost",
+		"GIT_COMMITTER_NAME":  "committer",
+		"GIT_COMMITTER_EMAIL": "committer@localhost",
+	})
+	got, err := runGitCmd("git", repoPath, args...)
 	assert.NoErrorf(t, err, "error running git:\noutput: %v", string(got))
 	return got
 }
