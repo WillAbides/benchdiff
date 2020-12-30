@@ -147,8 +147,12 @@ func HTMLFormatter(opts *HTMLFormatterOptions) OutputFormatter {
 		}
 		var buf bytes.Buffer
 		benchstat.FormatHTML(&buf, tables)
+		_, err := w.Write(buf.Bytes())
+		if err != nil {
+			return err
+		}
 		if footer != "" {
-			_, err := w.Write([]byte(footer))
+			_, err = w.Write([]byte(footer))
 			if err != nil {
 				return err
 			}

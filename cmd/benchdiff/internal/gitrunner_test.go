@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_refRunner_run(t *testing.T) {
+func Test_runAtGitRef(t *testing.T) {
 	dir := tmpDir(t)
 	fooPath := filepath.Join(dir, "foo")
 	err := ioutil.WriteFile(fooPath, []byte("OG content"), 0o600)
@@ -30,13 +30,7 @@ func Test_refRunner_run(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "OG content", string(got))
 	}
-	runner := &refRunner{
-		ref: "HEAD",
-		gitRunner: gitRunner{
-			repoPath: dir,
-		},
-	}
-	err = runner.run(fn)
+	err = runAtGitRef("git", dir, "HEAD", fn)
 	require.NoError(t, err)
 	got, err := ioutil.ReadFile(fooPath)
 	require.NoError(t, err)

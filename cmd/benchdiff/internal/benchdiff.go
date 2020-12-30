@@ -46,21 +46,6 @@ func fileExists(path string) bool {
 	return true
 }
 
-func (c *Benchdiff) gitRunner() *gitRunner {
-	return &gitRunner{
-		gitExecutable: c.GitCmd,
-		repoPath:      c.Path,
-	}
-}
-
-func (c *Benchdiff) baseRefRunner() *refRunner {
-	gr := c.gitRunner()
-	return &refRunner{
-		ref:       c.BaseRef,
-		gitRunner: *gr,
-	}
-}
-
 func (c *Benchdiff) cacheKey() string {
 	var b []byte
 	b = append(b, []byte(c.BenchCmd)...)
@@ -70,6 +55,11 @@ func (c *Benchdiff) cacheKey() string {
 }
 
 func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
+	gitCmd := c.GitCmd
+	if gitCmd == "" {
+		gitCmd = "git"
+	}
+
 	result = new(runBenchmarksResults)
 	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
 	worktreeFile, err := os.Create(worktreeFilename)
@@ -91,19 +81,21 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		return nil, err
 	}
 
-	headSHA, err := c.gitRunner().getRefSha("HEAD")
+	headSHA, err := runGitCmd(gitCmd, c.Path, "rev-parse", "HEAD")
 	if err != nil {
 		return nil, err
 	}
-	baseSHA, err := c.gitRunner().getRefSha(c.BaseRef)
+	result.headSHA = strings.TrimSpace(string(headSHA))
+
+	baseSHA, err := runGitCmd(gitCmd, c.Path, "rev-parse", c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
+	result.baseSHA = strings.TrimSpace(string(baseSHA))
 
 	baseFilename := fmt.Sprintf("benchdiff-%s-%s.out", baseSHA, c.cacheKey())
 	baseFilename = filepath.Join(c.ResultsDir, baseFilename)
-	result.headSHA = headSHA
-	result.baseSHA = baseSHA
+
 	result.baseOutputFile = baseFilename
 	result.worktreeOutputFile = worktreeFilename
 
@@ -126,7 +118,7 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	baseCmd.Stdout = baseFile
 	var baseCmdErr error
 
-	err = c.baseRefRunner().run(func() {
+	err = runAtGitRef(gitCmd, c.Path, c.BaseRef, func() {
 		baseCmdErr = baseCmd.Run()
 	})
 	if err != nil {
