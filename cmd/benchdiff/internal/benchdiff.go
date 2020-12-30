@@ -210,6 +210,7 @@ func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string) error {
 		HeadSHA         string `json:"head_sha,omitempty"`
 		BaseSHA         string `json:"base_sha,omitempty"`
 		BenchstatOutput string `json:"benchstat_output,omitempty"`
+		DegradedResult  bool   `json:"degraded_result"`
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
@@ -218,6 +219,7 @@ func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string) error {
 		BenchstatOutput: benchstatResult,
 		HeadSHA:         r.headSHA,
 		BaseSHA:         r.baseSHA,
+		DegradedResult:  r.HasChangeType(DegradingChange),
 	})
 }
 
