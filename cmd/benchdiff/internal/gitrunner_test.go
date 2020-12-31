@@ -30,7 +30,7 @@ func Test_runAtGitRef(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "OG content", string(got))
 	}
-	err = runAtGitRef("git", dir, "HEAD", fn)
+	err = runAtGitRef("git", dir, "HEAD", 0, fn)
 	require.NoError(t, err)
 	got, err := ioutil.ReadFile(fooPath)
 	require.NoError(t, err)

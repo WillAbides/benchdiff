@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/willabides/benchdiff/pkg/benchstatter"
 	"golang.org/x/crypto/sha3"
@@ -28,6 +29,7 @@ type Benchdiff struct {
 	Benchstat  *benchstatter.Benchstat
 	Force      bool
 	JSONOutput bool
+	BasePause  time.Duration
 }
 
 type runBenchmarksResults struct {
@@ -118,7 +120,7 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	baseCmd.Stdout = baseFile
 	var baseCmdErr error
 
-	err = runAtGitRef(gitCmd, c.Path, c.BaseRef, func() {
+	err = runAtGitRef(gitCmd, c.Path, c.BaseRef, c.BasePause, func() {
 		baseCmdErr = baseCmd.Run()
 	})
 	if err != nil {

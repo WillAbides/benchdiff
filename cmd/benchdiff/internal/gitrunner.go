@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 func runGitCmd(gitCmd, repoPath string, args ...string) ([]byte, error) {
@@ -45,7 +46,7 @@ func stashAndReset(gitCmd, repoPath string) (revert func() error, err error) {
 	return revert, nil
 }
 
-func runAtGitRef(gitCmd, repoPath, ref string, fn func()) error {
+func runAtGitRef(gitCmd, repoPath, ref string, pause time.Duration, fn func()) error {
 	origRef, err := runGitCmd(gitCmd, repoPath, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return err
@@ -74,6 +75,7 @@ func runAtGitRef(gitCmd, repoPath, ref string, fn func()) error {
 			fmt.Println(cerr)
 		}
 	}()
+	time.Sleep(pause)
 	fn()
 	return nil
 }

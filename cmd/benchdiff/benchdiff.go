@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/willabides/benchdiff/cmd/benchdiff/internal"
@@ -61,6 +62,7 @@ var benchVars = kong.Vars{
 	"BenchCmdHelp":     `The go command to use for benchmarks.`,
 	"CacheDirHelp":     `The directory where benchmark output will kept between runs.`,
 	"BaseRefHelp":      `The git ref to be used as a baseline.`,
+	"CooldownHelp":     `How long to pause for cooldown between head and base runs.`,
 	"ForceBaseHelp":    `Rerun benchmarks on the base reference even if the output already exists.`,
 	"OnDegradeHelp":    `Exit code when there is a statistically significant degradation in the results.`,
 	"JSONOutputHelp":   `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
@@ -75,6 +77,7 @@ var cli struct {
 	BenchCmd      string           `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
 	BenchCount    int              `kong:"default=10,help=${BenchCountHelp}"`
 	Benchtime     string           `kong:"default='1s',help=${BenchtimeHelp}"`
+	Cooldown      time.Duration    `kong:"default='100ms',help=${CooldownHelp}"`
 	CacheDir      string           `kong:"type=dir,default=${CacheDirDefault},help=${CacheDirHelp}"`
 	ForceBase     bool             `kong:"help=${ForceBaseHelp}"`
 	GitCmd        string           `kong:"default=git,help=${GitCmdHelp}"`
@@ -112,6 +115,7 @@ func main() {
 		Benchstat:  buildBenchstat(cli.BenchstatOpts),
 		Force:      cli.ForceBase,
 		GitCmd:     cli.GitCmd,
+		BasePause:  cli.Cooldown,
 	}
 	result, err := bd.Run()
 	kctx.FatalIfErrorf(err)
