@@ -37,6 +37,8 @@ Flags:
       --bench-count=10             Run each benchmark n times.
       --benchtime="1s"             The -benchtime argument for the go test
                                    command
+      --cooldown=100ms             How long to pause for cooldown between head
+                                   and base runs.
       --cache-dir="./tmp"          The directory where benchmark output will
                                    kept between runs.
       --force-base                 Rerun benchmarks on the base reference even
@@ -48,13 +50,17 @@ Flags:
       --on-degrade=0               Exit code when there is a statistically
                                    significant degradation in the results.
       --packages="./..."           Run benchmarks in these packages.
+      --tolerance=10.0             The minimum percent change before a result is
+                                   considered degraded.
       --alpha=0.05                 consider change significant if p < α
-      --csv                        format benchstat results as CSV
+      --csv                        format benchstat output as CSV
       --delta-test="utest"         significance test to apply to delta: utest,
                                    ttest, or none
       --geomean                    print the geometric mean of each file
-      --html                       format benchstat results as CSV an HTML table
-      --norange                    suppress range columns (CSV only)
+      --html                       format benchstat output as an HTML table
+      --markdown                   format benchstat output as markdown tables
+      --norange                    suppress range columns (CSV and markdown
+                                   only)
       --reverse-sort               reverse sort order
       --sort="none"                sort by order: delta, name, none
       --split="pkg,goos,goarch"    split benchmarks by labels

@@ -67,6 +67,7 @@ var benchVars = kong.Vars{
 	"OnDegradeHelp":    `Exit code when there is a statistically significant degradation in the results.`,
 	"JSONOutputHelp":   `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
 	"GitCmdHelp":       `The executable to use for git commands.`,
+	"ToleranceHelp":    `The minimum percent change before a result is considered degraded.`,
 	"VersionHelp":      `Output the benchdiff version and exit.`,
 }
 
@@ -84,6 +85,7 @@ var cli struct {
 	JSONOutput    bool             `kong:"help=${JSONOutputHelp}"`
 	OnDegrade     int              `kong:"name=on-degrade,default=0,help=${OnDegradeHelp}"`
 	Packages      string           `kong:"default='./...',help=${PackagesHelp}"`
+	Tolerance     float64          `kong:"default='10.0',help=${ToleranceHelp}"`
 	BenchstatOpts benchstatOpts    `kong:"embed"`
 	Version       kong.VersionFlag `kong:"help=${VersionHelp}"`
 }
@@ -128,9 +130,10 @@ func main() {
 	err = result.WriteOutput(os.Stdout, &internal.RunResultOutputOptions{
 		BenchstatFormatter: buildBenchstat(cli.BenchstatOpts).OutputFormatter,
 		OutputFormat:       outputFormat,
+		Tolerance:          cli.Tolerance,
 	})
 	kctx.FatalIfErrorf(err)
-	if result.HasChangeType(internal.DegradingChange) {
+	if result.HasDegradedResult(cli.Tolerance) {
 		os.Exit(cli.OnDegrade)
 	}
 }

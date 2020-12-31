@@ -169,6 +169,7 @@ type RunResult struct {
 type RunResultOutputOptions struct {
 	BenchstatFormatter benchstatter.OutputFormatter // default benchstatter.TextFormatter(nil)
 	OutputFormat       string                       // one of json or human. default: human
+	Tolerance          float64
 }
 
 // WriteOutput outputs the result
@@ -179,6 +180,7 @@ func (r *RunResult) WriteOutput(w io.Writer, opts *RunResultOutputOptions) error
 	finalOpts := &RunResultOutputOptions{
 		BenchstatFormatter: benchstatter.TextFormatter(nil),
 		OutputFormat:       "human",
+		Tolerance:          opts.Tolerance,
 	}
 	if opts.BenchstatFormatter != nil {
 		finalOpts.BenchstatFormatter = opts.BenchstatFormatter
@@ -194,25 +196,23 @@ func (r *RunResult) WriteOutput(w io.Writer, opts *RunResultOutputOptions) error
 		return err
 	}
 
-	var fn func(io.Writer, string) error
 	switch finalOpts.OutputFormat {
 	case "human":
-		fn = r.writeHumanResult
+		return r.writeHumanResult(w, benchstatBuf.String())
 	case "json":
-		fn = r.writeJSONResult
+		return r.writeJSONResult(w, benchstatBuf.String(), finalOpts.Tolerance)
 	default:
 		return fmt.Errorf("unknown OutputFormat")
 	}
-	return fn(w, benchstatBuf.String())
 }
 
-func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string) error {
+func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string, tolerance float64) error {
 	type runResultJSON struct {
 		BenchCommand    string `json:"bench_command,omitempty"`
 		HeadSHA         string `json:"head_sha,omitempty"`
 		BaseSHA         string `json:"base_sha,omitempty"`
-		BenchstatOutput string `json:"benchstat_output,omitempty"`
 		DegradedResult  bool   `json:"degraded_result"`
+		BenchstatOutput string `json:"benchstat_output,omitempty"`
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
@@ -221,7 +221,7 @@ func (r *RunResult) writeJSONResult(w io.Writer, benchstatResult string) error {
 		BenchstatOutput: benchstatResult,
 		HeadSHA:         r.headSHA,
 		BaseSHA:         r.baseSHA,
-		DegradedResult:  r.HasChangeType(DegradingChange),
+		DegradedResult:  r.HasDegradedResult(tolerance),
 	})
 }
 
@@ -247,16 +247,24 @@ func (r *RunResult) writeHumanResult(w io.Writer, benchstatResult string) error 
 	return nil
 }
 
-// HasChangeType returns true if the result has at least one change with the given type
-func (r *RunResult) HasChangeType(changeType BenchmarkChangeType) bool {
+// HasDegradedResult returns true if there are any rows with DegradingChange and PctDelta over tolerance
+func (r *RunResult) HasDegradedResult(tolerance float64) bool {
+	return r.maxDegradedPct() > tolerance
+}
+
+func (r *RunResult) maxDegradedPct() float64 {
+	max := 0.0
 	for _, table := range r.tables {
 		for _, row := range table.Rows {
-			if row.Change == int(changeType) {
-				return true
+			if row.Change != DegradingChange {
+				continue
+			}
+			if row.PctDelta > max {
+				max = row.PctDelta
 			}
 		}
 	}
-	return false
+	return max
 }
 
 // BenchmarkChangeType is whether a change is an improvement or degradation
