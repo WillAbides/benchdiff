@@ -75,3 +75,19 @@ Flags:
       --show-cache-dir      Output the cache dir and exit.
 ```
 <!--- end usage output --->
+
+## Install
+
+### go get
+
+`go get -u github.com/willabides/benchdiff/cmd/benchdiff`
+
+### bindown
+
+Add a [bindown](https://github.com/willabides/bindown) dependency:
+
+``` shell
+$ bindown template-source add benchdiff https://raw.githubusercontent.com/WillAbides/benchdiff/main/bindown.yml
+$ bindown dependency add benchdiff benchdiff#benchdiff
+Please enter a value for required variable "version":	<latest version>
+```
