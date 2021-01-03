@@ -34,8 +34,7 @@ Flags:
       --cooldown=100ms     How long to pause for cooldown between head and base runs.
       --force-base         Rerun benchmarks on the base reference even if the output already exists.
       --git-cmd="git"      The executable to use for git commands.
-      --json-output        Format output as JSON. When true the --csv and --html flags affect only
-                           the "benchstat_output" field.
+      --json               Format output as JSON.
       --on-degrade=0       Exit code when there is a statistically significant degradation in the
                            results.
       --tolerance=10.0     The minimum percent change before a result is considered degraded.
@@ -54,11 +53,9 @@ Flags:
 
   benchstat options:
       --alpha=0.05                 consider change significant if p < α
-      --csv                        format benchstat output as CSV
+      --benchstat-output="text"    format for benchstat output (csv,html,markdown or text)
       --delta-test="utest"         significance test to apply to delta: utest, ttest, or none
       --geomean                    print the geometric mean of each file
-      --html                       format benchstat output as an HTML table
-      --markdown                   format benchstat output as markdown tables
       --norange                    suppress range columns (CSV and markdown only)
       --reverse-sort               reverse sort order
       --sort="none"                sort by order: delta, name, none
