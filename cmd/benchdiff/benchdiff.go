@@ -52,31 +52,32 @@ type benchstatOpts struct {
 var version string
 
 var benchVars = kong.Vars{
-	"version":          version,
-	"BenchCmdDefault":  `go`,
-	"BenchCountHelp":   `Run each benchmark n times.`,
-	"BenchHelp":        `Run only those benchmarks matching a regular expression.`,
-	"GoArgsHelp":       `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for details."`,
-	"BenchtimeHelp":    `The -benchtime argument for the go test command`,
-	"PackagesHelp":     `Run benchmarks in these packages.`,
-	"BenchCmdHelp":     `The go command to use for benchmarks.`,
-	"CacheDirHelp":     `Override the default directory where benchmark output is kept.`,
-	"BaseRefHelp":      `The git ref to be used as a baseline.`,
-	"CooldownHelp":     `How long to pause for cooldown between head and base runs.`,
-	"ForceBaseHelp":    `Rerun benchmarks on the base reference even if the output already exists.`,
-	"OnDegradeHelp":    `Exit code when there is a statistically significant degradation in the results.`,
-	"JSONOutputHelp":   `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
-	"GitCmdHelp":       `The executable to use for git commands.`,
-	"ToleranceHelp":    `The minimum percent change before a result is considered degraded.`,
-	"VersionHelp":      `Output the benchdiff version and exit.`,
-	"ShowCacheDirHelp": `Output the cache dir and exit.`,
-	"ClearCacheHelp":   `Remove benchdiff files from the cache dir.`,
+	"version":              version,
+	"BenchCmdDefault":      `go`,
+	"CountHelp":            `The -count argument for 'go-test'`,
+	"BenchHelp":            `The -bench argument for 'go test'. Run only those benchmarks matching a regular expression.`,
+	"BenchmarkArgsHelp":    `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for details."`,
+	"BenchtimeHelp":        `The -benchtime argument for 'go test'`,
+	"PackagesHelp":         `Run benchmarks in these packages.`,
+	"BenchCmdHelp":         `The go command to use for benchmarks.`,
+	"CacheDirHelp":         `Override the default directory where benchmark output is kept.`,
+	"BaseRefHelp":          `The git ref to be used as a baseline.`,
+	"CooldownHelp":         `How long to pause for cooldown between head and base runs.`,
+	"ForceBaseHelp":        `Rerun benchmarks on the base reference even if the output already exists.`,
+	"OnDegradeHelp":        `Exit code when there is a statistically significant degradation in the results.`,
+	"JSONOutputHelp":       `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
+	"GitCmdHelp":           `The executable to use for git commands.`,
+	"ToleranceHelp":        `The minimum percent change before a result is considered degraded.`,
+	"VersionHelp":          `Output the benchdiff version and exit.`,
+	"ShowCacheDirHelp":     `Output the cache dir and exit.`,
+	"ClearCacheHelp":       `Remove benchdiff files from the cache dir.`,
+	"ShowBenchCmdlineHelp": `Instead of running benchmarks, output the command that would be used and exit.`,
 }
 
 var groupHelp = kong.Vars{
-	"benchstatGroupHelp": "benchstat output options:",
-	"gotestGroupHelp":    "'go test' options:",
-	"cacheGroupHelp":     "cache management:",
+	"benchstatGroupHelp": "benchstat options:",
+	"gotestGroupHelp":    "benchmark command line:",
+	"cacheGroupHelp":     "benchmark result cache:",
 }
 
 var cli struct {
@@ -90,12 +91,13 @@ var cli struct {
 	OnDegrade  int           `kong:"name=on-degrade,default=0,help=${OnDegradeHelp},group='x'"`
 	Tolerance  float64       `kong:"default='10.0',help=${ToleranceHelp},group='x'"`
 
-	Bench     string `kong:"default='.',help=${BenchHelp},group='gotest'"`
-	Benchtime string `kong:"default='1s',help=${BenchtimeHelp},group='gotest'"`
-	Count     int    `kong:"default=10,help=${BenchCountHelp},group='gotest'"`
-	GoArgs    string `kong:"placeholder='args',help=${GoArgsHelp},group='gotest'"`
-	GoCmd     string `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp},group='gotest'"`
-	Packages  string `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
+	Bench            string               `kong:"default='.',help=${BenchHelp},group='gotest'"`
+	BenchmarkArgs    string               `kong:"placeholder='args',help=${BenchmarkArgsHelp},group='gotest'"`
+	BenchmarkCmd     string               `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp},group='gotest'"`
+	Benchtime        string               `kong:"default='1s',help=${BenchtimeHelp},group='gotest'"`
+	Count            int                  `kong:"default=10,help=${CountHelp},group='gotest'"`
+	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
+	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
 
 	BenchstatOpts benchstatOpts `kong:"embed"`
 
@@ -156,11 +158,42 @@ func defaultCacheDir() (string, error) {
 	return filepath.Join(userCacheDir, "benchdiff"), nil
 }
 
+// ShowBenchCmdlineFlag flag for --show-bench-cmdling
+type ShowBenchCmdlineFlag bool
+
+// AfterApply shows benchmark command line and exits
+func (v ShowBenchCmdlineFlag) AfterApply(app *kong.Kong) error {
+	benchArgs, err := getBenchArgs()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(app.Stdout, cli.BenchmarkCmd, benchArgs)
+	app.Exit(0)
+	return nil
+}
+
+func getBenchArgs() (string, error) {
+	argsTmpl := cli.BenchmarkArgs
+	if argsTmpl == "" {
+		argsTmpl = defaultBenchArgsTmpl
+	}
+	tmpl, err := template.New("").Parse(argsTmpl)
+	if err != nil {
+		return "", err
+	}
+	var benchArgs bytes.Buffer
+	err = tmpl.Execute(&benchArgs, cli)
+	if err != nil {
+		return "", err
+	}
+	return benchArgs.String(), nil
+}
+
 const description = `
 benchdiff runs go benchmarks on your current git worktree and a base ref then
 uses benchstat to show the delta.
 
-See https://github.com/willabides/benchdiff for more details.
+More documentation at https://github.com/willabides/benchdiff.
 `
 
 func main() {
@@ -175,21 +208,16 @@ func main() {
 		kong.Help(helpprinter.NewHelpPrinter(nil)),
 		kong.Description(strings.TrimSpace(description)),
 	)
-	if cli.GoArgs == "" {
-		cli.GoArgs = defaultBenchArgsTmpl
-	}
-	tmpl, err := template.New("").Parse(cli.GoArgs)
-	kctx.FatalIfErrorf(err)
-	var benchArgs bytes.Buffer
-	err = tmpl.Execute(&benchArgs, cli)
+
+	benchArgs, err := getBenchArgs()
 	kctx.FatalIfErrorf(err)
 
 	cacheDir, err := getCacheDir()
 	kctx.FatalIfErrorf(err)
 
 	bd := &internal.Benchdiff{
-		BenchCmd:   cli.GoCmd,
-		BenchArgs:  benchArgs.String(),
+		BenchCmd:   cli.BenchmarkCmd,
+		BenchArgs:  benchArgs,
 		ResultsDir: cacheDir,
 		BaseRef:    cli.BaseRef,
 		Path:       ".",
