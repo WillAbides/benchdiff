@@ -16,7 +16,10 @@ import (
 	"golang.org/x/perf/benchstat"
 )
 
-const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchtime {{.Benchtime}} -benchmem -count {{.Count}} {{.Packages}}`
+const defaultBenchArgsTmpl = `test -bench {{ .Bench }} -run '^$' -benchtime {{ .Benchtime }} -count {{ .Count }}
+{{- if .CPU }} -cpu {{ .CPU }}{{ end }}
+{{- if .Benchmem }} -benchmem{{ end }}
+{{- " " }}{{ .Packages }}`
 
 var benchstatVars = kong.Vars{
 	"AlphaDefault":        "0.05",
@@ -56,7 +59,7 @@ var benchVars = kong.Vars{
 	"BenchmarkArgsHelp":    `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for details."`,
 	"BenchtimeHelp":        `The -benchtime argument for 'go test'`,
 	"PackagesHelp":         `Run benchmarks in these packages.`,
-	"BenchCmdHelp":         `The go command to use for benchmarks.`,
+	"BenchCmdHelp":         `The command to use for benchmarks.`,
 	"CacheDirHelp":         `Override the default directory where benchmark output is kept.`,
 	"BaseRefHelp":          `The git ref to be used as a baseline.`,
 	"CooldownHelp":         `How long to pause for cooldown between head and base runs.`,
@@ -69,6 +72,8 @@ var benchVars = kong.Vars{
 	"ShowCacheDirHelp":     `Output the cache dir and exit.`,
 	"ClearCacheHelp":       `Remove benchdiff files from the cache dir.`,
 	"ShowBenchCmdlineHelp": `Instead of running benchmarks, output the command that would be used and exit.`,
+	"CPUHelp":              `Specify a comma-separated list of GOMAXPROCS values for which the benchmarks should be executed. The default is the current value of GOMAXPROCS.`,
+	"BenchmemHelp":         `Memory allocation statistics for benchmarks.`,
 }
 
 var groupHelp = kong.Vars{
@@ -91,8 +96,10 @@ var cli struct {
 	Bench            string               `kong:"default='.',help=${BenchHelp},group='gotest'"`
 	BenchmarkArgs    string               `kong:"placeholder='args',help=${BenchmarkArgsHelp},group='gotest'"`
 	BenchmarkCmd     string               `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp},group='gotest'"`
+	Benchmem         bool                 `kong:"help=${BenchmemHelp},group='gotest'"`
 	Benchtime        string               `kong:"default='1s',help=${BenchtimeHelp},group='gotest'"`
 	Count            int                  `kong:"default=10,help=${CountHelp},group='gotest'"`
+	CPU              string               `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS'"`
 	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
 	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
 
@@ -183,7 +190,8 @@ func getBenchArgs() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return benchArgs.String(), nil
+	args := benchArgs.String()
+	return args, nil
 }
 
 const description = `

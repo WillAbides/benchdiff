@@ -44,9 +44,13 @@ Flags:
                                a regular expression.
       --benchmark-args=args    Override the default args to the go command. This may be a template.
                                See https://github.com/willabides/benchdiff for details."
-      --benchmark-cmd="go"     The go command to use for benchmarks.
+      --benchmark-cmd="go"     The command to use for benchmarks.
+      --benchmem               Memory allocation statistics for benchmarks.
       --benchtime="1s"         The -benchtime argument for 'go test'
       --count=10               The -count argument for 'go-test'
+      --cpu=GOMAXPROCS         Specify a comma-separated list of GOMAXPROCS values for which the
+                               benchmarks should be executed. The default is the current value of
+                               GOMAXPROCS.
       --packages="./..."       Run benchmarks in these packages.
       --show-bench-cmdline     Instead of running benchmarks, output the command that would be used
                                and exit.
