@@ -84,7 +84,21 @@ Flags:
 
 ### `--benchmark-args`
 
-blah
+The default should work for most cases.
+
+`--benchmark-args` is everything after "go" in the `go test` command that runs the benchmarks. You can use either 
+pass in the raw values or use a go template.
+
+Default value:
+
+```
+test {{ .Packages }} -run '^$'
+{{- if .Bench }} -bench {{ .Bench }}{{end}}
+{{- if .Count }} -count {{ .Count }}{{end}}
+{{- if .Benchtime }} -benchtime {{ .Benchtime }}{{end}}
+{{- if .CPU }} -cpu {{ .CPU }}{{ end }}
+{{- if .Benchmem }} -benchmem{{ end }}
+```
 
 ## Install
 
