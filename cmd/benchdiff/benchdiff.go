@@ -2,119 +2,249 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/willabides/benchdiff/cmd/benchdiff/internal"
+	"github.com/willabides/benchdiff/cmd/benchdiff/internal/helpprinter"
 	"github.com/willabides/benchdiff/pkg/benchstatter"
 	"golang.org/x/perf/benchstat"
 )
 
-const defaultBenchArgsTmpl = `test -bench {{.Bench}} -run '^$' -benchtime {{.Benchtime}} -benchmem -count {{.BenchCount}} {{.Packages}}`
+const defaultBenchArgsTmpl = `test {{ .Packages }} -run '^$'
+{{- if .Bench }} -bench {{ .Bench }}{{end}}
+{{- if .Count }} -count {{ .Count }}{{end}}
+{{- if .Benchtime }} -benchtime {{ .Benchtime }}{{end}}
+{{- if .CPU }} -cpu {{ .CPU }}{{ end }}
+{{- if .Benchmem }} -benchmem{{ end }}`
 
 var benchstatVars = kong.Vars{
-	"AlphaDefault":     "0.05",
-	"AlphaHelp":        `consider change significant if p < α`,
-	"CSVHelp":          `format benchstat output as CSV`,
-	"DeltaTestHelp":    `significance test to apply to delta: utest, ttest, or none`,
-	"DeltaTestDefault": `utest`,
-	"DeltaTestEnum":    `utest,ttest,none`,
-	"GeomeanHelp":      `print the geometric mean of each file`,
-	"HTMLHelp":         `format benchstat output as an HTML table`,
-	"MarkdownHelp":     `format benchstat output as markdown tables`,
-	"NorangeHelp":      `suppress range columns (CSV and markdown only)`,
-	"ReverseSortHelp":  `reverse sort order`,
-	"SortHelp":         `sort by order: delta, name, none`,
-	"SortEnum":         `delta,name,none`,
-	"SplitHelp":        `split benchmarks by labels`,
-	"SplitDefault":     `pkg,goos,goarch`,
+	"AlphaDefault":        "0.05",
+	"AlphaHelp":           `consider change significant if p < α`,
+	"DeltaTestHelp":       `significance test to apply to delta: utest, ttest, or none`,
+	"DeltaTestDefault":    `utest`,
+	"DeltaTestEnum":       `utest,ttest,none`,
+	"GeomeanHelp":         `print the geometric mean of each file`,
+	"NorangeHelp":         `suppress range columns (CSV and markdown only)`,
+	"ReverseSortHelp":     `reverse sort order`,
+	"SortHelp":            `sort by order: delta, name, none`,
+	"SortEnum":            `delta,name,none`,
+	"SplitHelp":           `split benchmarks by labels`,
+	"SplitDefault":        `pkg,goos,goarch`,
+	"BenchstatOutputHelp": `format for benchstat output (csv,html,markdown or text)`,
+	"BenchstatOutputEnum": `csv, html, markdown, text`,
 }
 
 type benchstatOpts struct {
-	Alpha       float64 `kong:"default=${AlphaDefault},help=${AlphaHelp}"`
-	CSV         bool    `kong:"help=${CSVHelp},xor='outputformat'"`
-	DeltaTest   string  `kong:"help=${DeltaTestHelp},default=${DeltaTestDefault},enum='utest,ttest,none'"`
-	Geomean     bool    `kong:"help=${GeomeanHelp}"`
-	HTML        bool    `kong:"help=${HTMLHelp},xor='outputformat'"`
-	Markdown    bool    `kong:"help=${MarkdownHelp}"`
-	Norange     bool    `kong:"help=${NorangeHelp}"`
-	ReverseSort bool    `kong:"help=${ReverseSortHelp}"`
-	Sort        string  `kong:"help=${SortHelp},enum=${SortEnum},default=none"`
-	Split       string  `kong:"help=${SplitHelp},default=${SplitDefault}"`
+	Alpha           float64 `kong:"default=${AlphaDefault},help=${AlphaHelp},group=benchstat"`
+	BenchstatOutput string  `kong:"default=text,enum=${BenchstatOutputEnum},help=${BenchstatOutputHelp},group=benchstat"`
+	DeltaTest       string  `kong:"help=${DeltaTestHelp},default=${DeltaTestDefault},enum='utest,ttest,none',group=benchstat"`
+	Geomean         bool    `kong:"help=${GeomeanHelp},group=benchstat"`
+	Norange         bool    `kong:"help=${NorangeHelp},group=benchstat"`
+	ReverseSort     bool    `kong:"help=${ReverseSortHelp},group=benchstat"`
+	Sort            string  `kong:"help=${SortHelp},enum=${SortEnum},default=none,group=benchstat"`
+	Split           string  `kong:"help=${SplitHelp},default=${SplitDefault},group=benchstat"`
 }
 
 var version string
 
 var benchVars = kong.Vars{
-	"version":          version,
-	"BenchCmdDefault":  `go`,
-	"BenchArgsDefault": defaultBenchArgsTmpl,
-	"CacheDirDefault":  filepath.FromSlash("./tmp"),
-	"BenchCountHelp":   `Run each benchmark n times.`,
-	"BenchHelp":        `Run only those benchmarks matching a regular expression.`,
-	"BenchArgsHelp":    `Use these arguments to run benchmarks. It may be a template.`,
-	"BenchtimeHelp":    `The -benchtime argument for the go test command`,
-	"PackagesHelp":     `Run benchmarks in these packages.`,
-	"BenchCmdHelp":     `The go command to use for benchmarks.`,
-	"CacheDirHelp":     `The directory where benchmark output will kept between runs.`,
-	"BaseRefHelp":      `The git ref to be used as a baseline.`,
-	"CooldownHelp":     `How long to pause for cooldown between head and base runs.`,
-	"ForceBaseHelp":    `Rerun benchmarks on the base reference even if the output already exists.`,
-	"OnDegradeHelp":    `Exit code when there is a statistically significant degradation in the results.`,
-	"JSONOutputHelp":   `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
-	"GitCmdHelp":       `The executable to use for git commands.`,
-	"ToleranceHelp":    `The minimum percent change before a result is considered degraded.`,
-	"VersionHelp":      `Output the benchdiff version and exit.`,
+	"version":              version,
+	"BenchCmdDefault":      `go`,
+	"CountHelp":            `Run each benchmark n times. If --cpu is set, run n times for each GOMAXPROCS value.'`,
+	"BenchHelp":            `Run only those benchmarks matching a regular expression. To run all benchmarks, use '--bench .'.`,
+	"BenchmarkArgsHelp":    `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for details."`,
+	"BenchtimeHelp":        `Run enough iterations of each benchmark to take t, specified as a time.Duration (for example, --benchtime 1h30s). The default is 1 second (1s). The special syntax Nx means to run the benchmark N times (for example, -benchtime 100x).`,
+	"PackagesHelp":         `Run benchmarks in these packages.`,
+	"BenchCmdHelp":         `The command to use for benchmarks.`,
+	"CacheDirHelp":         `Override the default directory where benchmark output is kept.`,
+	"BaseRefHelp":          `The git ref to be used as a baseline.`,
+	"CooldownHelp":         `How long to pause for cooldown between head and base runs.`,
+	"ForceBaseHelp":        `Rerun benchmarks on the base reference even if the output already exists.`,
+	"OnDegradeHelp":        `Exit code when there is a statistically significant degradation in the results.`,
+	"JSONHelp":             `Format output as JSON.`,
+	"GitCmdHelp":           `The executable to use for git commands.`,
+	"ToleranceHelp":        `The minimum percent change before a result is considered degraded.`,
+	"VersionHelp":          `Output the benchdiff version and exit.`,
+	"ShowCacheDirHelp":     `Output the cache dir and exit.`,
+	"ClearCacheHelp":       `Remove benchdiff files from the cache dir.`,
+	"ShowBenchCmdlineHelp": `Instead of running benchmarks, output the command that would be used and exit.`,
+	"CPUHelp":              `Specify a list of GOMAXPROCS values for which the benchmarks should be executed. The default is the current value of GOMAXPROCS.`,
+	"BenchmemHelp":         `Memory allocation statistics for benchmarks.`,
+}
+
+var groupHelp = kong.Vars{
+	"benchstatGroupHelp": "benchstat options:",
+	"gotestGroupHelp":    "benchmark command line:",
+	"cacheGroupHelp":     "benchmark result cache:",
 }
 
 var cli struct {
-	BaseRef       string           `kong:"default=HEAD,help=${BaseRefHelp}"`
-	Bench         string           `kong:"default='.',help=${BenchHelp}"`
-	BenchArgs     string           `kong:"default=${BenchArgsDefault},help=${BenchArgsHelp}"`
-	BenchCmd      string           `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp}"`
-	BenchCount    int              `kong:"default=10,help=${BenchCountHelp}"`
-	Benchtime     string           `kong:"default='1s',help=${BenchtimeHelp}"`
-	Cooldown      time.Duration    `kong:"default='100ms',help=${CooldownHelp}"`
-	CacheDir      string           `kong:"type=dir,default=${CacheDirDefault},help=${CacheDirHelp}"`
-	ForceBase     bool             `kong:"help=${ForceBaseHelp}"`
-	GitCmd        string           `kong:"default=git,help=${GitCmdHelp}"`
-	JSONOutput    bool             `kong:"help=${JSONOutputHelp}"`
-	OnDegrade     int              `kong:"name=on-degrade,default=0,help=${OnDegradeHelp}"`
-	Packages      string           `kong:"default='./...',help=${PackagesHelp}"`
-	Tolerance     float64          `kong:"default='10.0',help=${ToleranceHelp}"`
-	BenchstatOpts benchstatOpts    `kong:"embed"`
-	Version       kong.VersionFlag `kong:"help=${VersionHelp}"`
+	Version kong.VersionFlag `kong:"help=${VersionHelp}"`
+
+	BaseRef   string        `kong:"default=HEAD,help=${BaseRefHelp},group='x'"`
+	Cooldown  time.Duration `kong:"default='100ms',help=${CooldownHelp},group='x'"`
+	ForceBase bool          `kong:"help=${ForceBaseHelp},group='x'"`
+	GitCmd    string        `kong:"default=git,help=${GitCmdHelp},group='x'"`
+	JSON      bool          `kong:"help=${JSONHelp},group='x'"`
+	OnDegrade int           `kong:"name=on-degrade,default=0,help=${OnDegradeHelp},group='x'"`
+	Tolerance float64       `kong:"default='10.0',help=${ToleranceHelp},group='x'"`
+
+	Bench            string               `kong:"default='.',help=${BenchHelp},group='gotest'"`
+	BenchmarkArgs    string               `kong:"placeholder='args',help=${BenchmarkArgsHelp},group='gotest'"`
+	BenchmarkCmd     string               `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp},group='gotest'"`
+	Benchmem         bool                 `kong:"help=${BenchmemHelp},group='gotest'"`
+	Benchtime        time.Duration        `kong:"help=${BenchtimeHelp},group='gotest'"`
+	Count            int                  `kong:"default=10,help=${CountHelp},group='gotest'"`
+	CPU              CPUFlag              `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS,...'"`
+	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
+	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
+
+	BenchstatOpts benchstatOpts `kong:"embed"`
+
+	CacheDir     string           `kong:"type=dir,help=${CacheDirHelp},group='cache'"`
+	ClearCache   ClearCacheFlag   `kong:"help=${ClearCacheHelp},group='cache'"`
+	ShowCacheDir ShowCacheDirFlag `kong:"help=${ShowCacheDirHelp},group='cache'"`
+}
+
+// ShowCacheDirFlag flag for showing the cache directory
+type ShowCacheDirFlag bool
+
+// AfterApply outputs cli.CacheDir
+func (v ShowCacheDirFlag) AfterApply(app *kong.Kong) error {
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(app.Stdout, cacheDir)
+	app.Exit(0)
+	return nil
+}
+
+// ClearCacheFlag flag for clearing cache
+type ClearCacheFlag bool
+
+// AfterApply clears cache
+func (v ClearCacheFlag) AfterApply(app *kong.Kong) error {
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return err
+	}
+	files, err := filepath.Glob(filepath.Join(cacheDir, "benchdiff-*.out"))
+	if err != nil {
+		return fmt.Errorf("error finding files in %s: %v", cacheDir, err)
+	}
+	for _, file := range files {
+		err = os.Remove(file)
+		if err != nil {
+			return fmt.Errorf("error removing %s: %v", file, err)
+		}
+	}
+	app.Exit(0)
+	return nil
+}
+
+func getCacheDir() (string, error) {
+	if cli.CacheDir != "" {
+		return cli.CacheDir, nil
+	}
+	return defaultCacheDir()
+}
+
+func defaultCacheDir() (string, error) {
+	userCacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("error finding user cache dir: %v", err)
+	}
+	return filepath.Join(userCacheDir, "benchdiff"), nil
+}
+
+// ShowBenchCmdlineFlag flag for --show-bench-cmdling
+type ShowBenchCmdlineFlag bool
+
+// AfterApply shows benchmark command line and exits
+func (v ShowBenchCmdlineFlag) AfterApply(app *kong.Kong) error {
+	benchArgs, err := getBenchArgs()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(app.Stdout, cli.BenchmarkCmd, benchArgs)
+	app.Exit(0)
+	return nil
+}
+
+// CPUFlag is the flag for --cpu
+type CPUFlag []int
+
+func (c CPUFlag) String() string {
+	s := make([]string, len(c))
+	for i, cc := range c {
+		s[i] = strconv.Itoa(cc)
+	}
+	return strings.Join(s, ",")
+}
+
+func getBenchArgs() (string, error) {
+	argsTmpl := cli.BenchmarkArgs
+	if argsTmpl == "" {
+		argsTmpl = defaultBenchArgsTmpl
+	}
+	tmpl, err := template.New("").Parse(argsTmpl)
+	if err != nil {
+		return "", err
+	}
+	var benchArgs bytes.Buffer
+	err = tmpl.Execute(&benchArgs, cli)
+	if err != nil {
+		return "", err
+	}
+	args := benchArgs.String()
+	return args, nil
 }
 
 const description = `
 benchdiff runs go benchmarks on your current git worktree and a base ref then
 uses benchstat to show the delta.
 
-See https://github.com/willabides/benchdiff for more details.
+More documentation at https://github.com/willabides/benchdiff.
 `
 
 func main() {
-	kctx := kong.Parse(&cli, benchstatVars, benchVars,
+	userCacheDir, err := os.UserCacheDir()
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "error finding user cache dir: %v\n", err)
+		os.Exit(1)
+	}
+	benchVars["CacheDirDefault"] = filepath.Join(userCacheDir, "benchdiff")
+
+	kctx := kong.Parse(&cli, benchstatVars, benchVars, groupHelp,
+		kong.Help(helpprinter.NewHelpPrinter(nil)),
 		kong.Description(strings.TrimSpace(description)),
 	)
-	tmpl, err := template.New("").Parse(cli.BenchArgs)
+
+	benchArgs, err := getBenchArgs()
 	kctx.FatalIfErrorf(err)
-	var benchArgs bytes.Buffer
-	err = tmpl.Execute(&benchArgs, cli)
+
+	cacheDir, err := getCacheDir()
+	kctx.FatalIfErrorf(err)
+
+	bStat, err := buildBenchstat(&cli.BenchstatOpts)
 	kctx.FatalIfErrorf(err)
 
 	bd := &internal.Benchdiff{
-		BenchCmd:   cli.BenchCmd,
-		BenchArgs:  benchArgs.String(),
-		ResultsDir: cli.CacheDir,
+		BenchCmd:   cli.BenchmarkCmd,
+		BenchArgs:  benchArgs,
+		ResultsDir: cacheDir,
 		BaseRef:    cli.BaseRef,
 		Path:       ".",
 		Writer:     os.Stdout,
-		Benchstat:  buildBenchstat(cli.BenchstatOpts),
+		Benchstat:  bStat,
 		Force:      cli.ForceBase,
 		GitCmd:     cli.GitCmd,
 		BasePause:  cli.Cooldown,
@@ -123,12 +253,12 @@ func main() {
 	kctx.FatalIfErrorf(err)
 
 	outputFormat := "human"
-	if cli.JSONOutput {
+	if cli.JSON {
 		outputFormat = "json"
 	}
 
 	err = result.WriteOutput(os.Stdout, &internal.RunResultOutputOptions{
-		BenchstatFormatter: buildBenchstat(cli.BenchstatOpts).OutputFormatter,
+		BenchstatFormatter: bStat.OutputFormatter,
 		OutputFormat:       outputFormat,
 		Tolerance:          cli.Tolerance,
 	})
@@ -150,27 +280,30 @@ var sortOpts = map[string]benchstat.Order{
 	"delta": benchstat.ByDelta,
 }
 
-func buildBenchstat(opts benchstatOpts) *benchstatter.Benchstat {
+func buildBenchstat(opts *benchstatOpts) (*benchstatter.Benchstat, error) {
 	order := sortOpts[opts.Sort]
 	reverse := opts.ReverseSort
 	if order == nil {
 		reverse = false
 	}
-	formatter := benchstatter.TextFormatter(nil)
-	if opts.CSV {
+	var formatter benchstatter.OutputFormatter
+	switch opts.BenchstatOutput {
+	case "text":
+		formatter = benchstatter.TextFormatter(nil)
+	case "csv":
 		formatter = benchstatter.CSVFormatter(&benchstatter.CSVFormatterOptions{
 			NoRange: opts.Norange,
 		})
-	}
-	if opts.HTML {
+	case "html":
 		formatter = benchstatter.HTMLFormatter(nil)
-	}
-	if opts.Markdown {
+	case "markdown":
 		formatter = benchstatter.MarkdownFormatter(&benchstatter.MarkdownFormatterOptions{
 			CSVFormatterOptions: benchstatter.CSVFormatterOptions{
 				NoRange: opts.Norange,
 			},
 		})
+	default:
+		return nil, fmt.Errorf("unexpected output format: %s", opts.BenchstatOutput)
 	}
 
 	return &benchstatter.Benchstat{
@@ -181,5 +314,5 @@ func buildBenchstat(opts benchstatOpts) *benchstatter.Benchstat {
 		Order:           order,
 		ReverseOrder:    reverse,
 		OutputFormatter: formatter,
-	}
+	}, nil
 }

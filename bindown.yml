@@ -2,6 +2,14 @@ systems:
 - darwin/amd64
 - linux/amd64
 dependencies:
+  benchd:
+    template: benchdiff#benchdiff
+    vars:
+      version: 0.4.3
+  benchdi:
+    template: benchdiff#benchdiff
+    vars:
+      version: 0.4.3
   gobin:
     template: origin#gobin
     vars:
@@ -20,6 +28,14 @@ dependencies:
       version: 0.7.1
 templates:
   benchdiff:
+    url: https://github.com/WillAbides/benchdiff/releases/download/v{{.version}}/benchdiff_{{.version}}_{{.os}}_{{.arch}}.tar.gz
+    required_vars:
+    - version
+    systems:
+    - darwin/amd64
+    - linux/386
+    - linux/amd64
+  benchdiff#benchdiff:
     url: https://github.com/WillAbides/benchdiff/releases/download/v{{.version}}/benchdiff_{{.version}}_{{.os}}_{{.arch}}.tar.gz
     required_vars:
     - version
@@ -133,6 +149,7 @@ templates:
     - linux/amd64
     - windows/amd64
 template_sources:
+  benchdiff: https://raw.githubusercontent.com/WillAbides/benchdiff/main/bindown.yml
   origin: https://raw.githubusercontent.com/WillAbides/bindown-templates/master/bindown.yml
 url_checksums:
   https://github.com/golangci/golangci-lint/releases/download/v1.28.2/golangci-lint-1.28.2-darwin-amd64.tar.gz: 6e6952a4d72906f6265c379743f274b7609a289cc9cbb19bf6ff94e6f8f00daf

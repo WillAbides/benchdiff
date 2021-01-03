@@ -21,3 +21,4 @@ if [ "$1" = "--check" ]; then
 fi
 
 go generate ./...
+script/generate-readme
