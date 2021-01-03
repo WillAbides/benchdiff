@@ -40,17 +40,20 @@ Flags:
       --tolerance=10.0     The minimum percent change before a result is considered degraded.
 
   benchmark command line:
-      --bench="."              The -bench argument for 'go test'. Run only those benchmarks matching
-                               a regular expression.
+      --bench="."              Run only those benchmarks matching a regular expression. To run all
+                               benchmarks, use '--bench .'.
       --benchmark-args=args    Override the default args to the go command. This may be a template.
                                See https://github.com/willabides/benchdiff for details."
       --benchmark-cmd="go"     The command to use for benchmarks.
       --benchmem               Memory allocation statistics for benchmarks.
-      --benchtime="1s"         The -benchtime argument for 'go test'
-      --count=10               The -count argument for 'go-test'
-      --cpu=GOMAXPROCS         Specify a comma-separated list of GOMAXPROCS values for which the
-                               benchmarks should be executed. The default is the current value of
-                               GOMAXPROCS.
+      --benchtime=DURATION     Run enough iterations of each benchmark to take t, specified as a
+                               time.Duration (for example, --benchtime 1h30s). The default is 1
+                               second (1s). The special syntax Nx means to run the benchmark N times
+                               (for example, -benchtime 100x).
+      --count=10               Run each benchmark n times. If --cpu is set, run n times for each
+                               GOMAXPROCS value.'
+      --cpu=GOMAXPROCS,...     Specify a list of GOMAXPROCS values for which the benchmarks should
+                               be executed. The default is the current value of GOMAXPROCS.
       --packages="./..."       Run benchmarks in these packages.
       --show-bench-cmdline     Instead of running benchmarks, output the command that would be used
                                and exit.

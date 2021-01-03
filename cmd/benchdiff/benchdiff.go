@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -16,10 +17,12 @@ import (
 	"golang.org/x/perf/benchstat"
 )
 
-const defaultBenchArgsTmpl = `test -bench {{ .Bench }} -run '^$' -benchtime {{ .Benchtime }} -count {{ .Count }}
+const defaultBenchArgsTmpl = `test {{ .Packages }} -run '^$'
+{{- if .Bench }} -bench {{ .Bench }}{{end}}
+{{- if .Count }} -count {{ .Count }}{{end}}
+{{- if .Benchtime }} -benchtime {{ .Benchtime }}{{end}}
 {{- if .CPU }} -cpu {{ .CPU }}{{ end }}
-{{- if .Benchmem }} -benchmem{{ end }}
-{{- " " }}{{ .Packages }}`
+{{- if .Benchmem }} -benchmem{{ end }}`
 
 var benchstatVars = kong.Vars{
 	"AlphaDefault":        "0.05",
@@ -54,10 +57,10 @@ var version string
 var benchVars = kong.Vars{
 	"version":              version,
 	"BenchCmdDefault":      `go`,
-	"CountHelp":            `The -count argument for 'go-test'`,
-	"BenchHelp":            `The -bench argument for 'go test'. Run only those benchmarks matching a regular expression.`,
+	"CountHelp":            `Run each benchmark n times. If --cpu is set, run n times for each GOMAXPROCS value.'`,
+	"BenchHelp":            `Run only those benchmarks matching a regular expression. To run all benchmarks, use '--bench .'.`,
 	"BenchmarkArgsHelp":    `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for details."`,
-	"BenchtimeHelp":        `The -benchtime argument for 'go test'`,
+	"BenchtimeHelp":        `Run enough iterations of each benchmark to take t, specified as a time.Duration (for example, --benchtime 1h30s). The default is 1 second (1s). The special syntax Nx means to run the benchmark N times (for example, -benchtime 100x).`,
 	"PackagesHelp":         `Run benchmarks in these packages.`,
 	"BenchCmdHelp":         `The command to use for benchmarks.`,
 	"CacheDirHelp":         `Override the default directory where benchmark output is kept.`,
@@ -72,7 +75,7 @@ var benchVars = kong.Vars{
 	"ShowCacheDirHelp":     `Output the cache dir and exit.`,
 	"ClearCacheHelp":       `Remove benchdiff files from the cache dir.`,
 	"ShowBenchCmdlineHelp": `Instead of running benchmarks, output the command that would be used and exit.`,
-	"CPUHelp":              `Specify a comma-separated list of GOMAXPROCS values for which the benchmarks should be executed. The default is the current value of GOMAXPROCS.`,
+	"CPUHelp":              `Specify a list of GOMAXPROCS values for which the benchmarks should be executed. The default is the current value of GOMAXPROCS.`,
 	"BenchmemHelp":         `Memory allocation statistics for benchmarks.`,
 }
 
@@ -97,9 +100,9 @@ var cli struct {
 	BenchmarkArgs    string               `kong:"placeholder='args',help=${BenchmarkArgsHelp},group='gotest'"`
 	BenchmarkCmd     string               `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp},group='gotest'"`
 	Benchmem         bool                 `kong:"help=${BenchmemHelp},group='gotest'"`
-	Benchtime        string               `kong:"default='1s',help=${BenchtimeHelp},group='gotest'"`
+	Benchtime        time.Duration        `kong:"help=${BenchtimeHelp},group='gotest'"`
 	Count            int                  `kong:"default=10,help=${CountHelp},group='gotest'"`
-	CPU              string               `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS'"`
+	CPU              CPUFlag              `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS,...'"`
 	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
 	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
 
@@ -174,6 +177,17 @@ func (v ShowBenchCmdlineFlag) AfterApply(app *kong.Kong) error {
 	fmt.Fprintln(app.Stdout, cli.BenchmarkCmd, benchArgs)
 	app.Exit(0)
 	return nil
+}
+
+// CPUFlag is the flag for --cpu
+type CPUFlag []int
+
+func (c CPUFlag) String() string {
+	s := make([]string, len(c))
+	for i, cc := range c {
+		s[i] = strconv.Itoa(cc)
+	}
+	return strings.Join(s, ",")
 }
 
 func getBenchArgs() (string, error) {
