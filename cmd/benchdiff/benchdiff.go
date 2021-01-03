@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,29 +52,31 @@ type benchstatOpts struct {
 var version string
 
 var benchVars = kong.Vars{
-	"version":         version,
-	"BenchCmdDefault": `go`,
-	"CacheDirDefault": filepath.FromSlash("./tmp"),
-	"BenchCountHelp":  `Run each benchmark n times.`,
-	"BenchHelp":       `Run only those benchmarks matching a regular expression.`,
-	"GoArgsHelp":      `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for the default value."`,
-	"BenchtimeHelp":   `The -benchtime argument for the go test command`,
-	"PackagesHelp":    `Run benchmarks in these packages.`,
-	"BenchCmdHelp":    `The go command to use for benchmarks.`,
-	"CacheDirHelp":    `The directory where benchmark output will kept between runs.`,
-	"BaseRefHelp":     `The git ref to be used as a baseline.`,
-	"CooldownHelp":    `How long to pause for cooldown between head and base runs.`,
-	"ForceBaseHelp":   `Rerun benchmarks on the base reference even if the output already exists.`,
-	"OnDegradeHelp":   `Exit code when there is a statistically significant degradation in the results.`,
-	"JSONOutputHelp":  `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
-	"GitCmdHelp":      `The executable to use for git commands.`,
-	"ToleranceHelp":   `The minimum percent change before a result is considered degraded.`,
-	"VersionHelp":     `Output the benchdiff version and exit.`,
+	"version":          version,
+	"BenchCmdDefault":  `go`,
+	"BenchCountHelp":   `Run each benchmark n times.`,
+	"BenchHelp":        `Run only those benchmarks matching a regular expression.`,
+	"GoArgsHelp":       `Override the default args to the go command. This may be a template. See https://github.com/willabides/benchdiff for details."`,
+	"BenchtimeHelp":    `The -benchtime argument for the go test command`,
+	"PackagesHelp":     `Run benchmarks in these packages.`,
+	"BenchCmdHelp":     `The go command to use for benchmarks.`,
+	"CacheDirHelp":     `Override the default directory where benchmark output is kept.`,
+	"BaseRefHelp":      `The git ref to be used as a baseline.`,
+	"CooldownHelp":     `How long to pause for cooldown between head and base runs.`,
+	"ForceBaseHelp":    `Rerun benchmarks on the base reference even if the output already exists.`,
+	"OnDegradeHelp":    `Exit code when there is a statistically significant degradation in the results.`,
+	"JSONOutputHelp":   `Format output as JSON. When true the --csv and --html flags affect only the "benchstat_output" field.`,
+	"GitCmdHelp":       `The executable to use for git commands.`,
+	"ToleranceHelp":    `The minimum percent change before a result is considered degraded.`,
+	"VersionHelp":      `Output the benchdiff version and exit.`,
+	"ShowCacheDirHelp": `Output the cache dir and exit.`,
+	"ClearCacheHelp":   `Remove benchdiff files from the cache dir.`,
 }
 
 var groupHelp = kong.Vars{
 	"benchstatGroupHelp": "benchstat output options:",
 	"gotestGroupHelp":    "'go test' options:",
+	"cacheGroupHelp":     "cache management:",
 }
 
 var cli struct {
@@ -81,7 +84,6 @@ var cli struct {
 
 	BaseRef    string        `kong:"default=HEAD,help=${BaseRefHelp},group='x'"`
 	Cooldown   time.Duration `kong:"default='100ms',help=${CooldownHelp},group='x'"`
-	CacheDir   string        `kong:"type=dir,default=${CacheDirDefault},help=${CacheDirHelp},group='x'"`
 	ForceBase  bool          `kong:"help=${ForceBaseHelp},group='x'"`
 	GitCmd     string        `kong:"default=git,help=${GitCmdHelp},group='x'"`
 	JSONOutput bool          `kong:"help=${JSONOutputHelp},group='x'"`
@@ -96,6 +98,62 @@ var cli struct {
 	Packages  string `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
 
 	BenchstatOpts benchstatOpts `kong:"embed"`
+
+	CacheDir     string           `kong:"type=dir,help=${CacheDirHelp},group='cache'"`
+	ClearCache   ClearCacheFlag   `kong:"help=${ClearCacheHelp},group='cache'"`
+	ShowCacheDir ShowCacheDirFlag `kong:"help=${ShowCacheDirHelp},group='cache'"`
+}
+
+// ShowCacheDirFlag flag for showing the cache directory
+type ShowCacheDirFlag bool
+
+// AfterApply outputs cli.CacheDir
+func (v ShowCacheDirFlag) AfterApply(app *kong.Kong) error {
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(app.Stdout, cacheDir)
+	app.Exit(0)
+	return nil
+}
+
+// ClearCacheFlag flag for clearing cache
+type ClearCacheFlag bool
+
+// AfterApply clears cache
+func (v ClearCacheFlag) AfterApply(app *kong.Kong) error {
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return err
+	}
+	files, err := filepath.Glob(filepath.Join(cacheDir, "benchdiff-*.out"))
+	if err != nil {
+		return fmt.Errorf("error finding files in %s: %v", cacheDir, err)
+	}
+	for _, file := range files {
+		err = os.Remove(file)
+		if err != nil {
+			return fmt.Errorf("error removing %s: %v", file, err)
+		}
+	}
+	app.Exit(0)
+	return nil
+}
+
+func getCacheDir() (string, error) {
+	if cli.CacheDir != "" {
+		return cli.CacheDir, nil
+	}
+	return defaultCacheDir()
+}
+
+func defaultCacheDir() (string, error) {
+	userCacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("error finding user cache dir: %v", err)
+	}
+	return filepath.Join(userCacheDir, "benchdiff"), nil
 }
 
 const description = `
@@ -106,6 +164,13 @@ See https://github.com/willabides/benchdiff for more details.
 `
 
 func main() {
+	userCacheDir, err := os.UserCacheDir()
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "error finding user cache dir: %v\n", err)
+		os.Exit(1)
+	}
+	benchVars["CacheDirDefault"] = filepath.Join(userCacheDir, "benchdiff")
+
 	kctx := kong.Parse(&cli, benchstatVars, benchVars, groupHelp,
 		kong.Help(helpprinter.NewHelpPrinter(nil)),
 		kong.Description(strings.TrimSpace(description)),
@@ -119,10 +184,13 @@ func main() {
 	err = tmpl.Execute(&benchArgs, cli)
 	kctx.FatalIfErrorf(err)
 
+	cacheDir, err := getCacheDir()
+	kctx.FatalIfErrorf(err)
+
 	bd := &internal.Benchdiff{
 		BenchCmd:   cli.GoCmd,
 		BenchArgs:  benchArgs.String(),
-		ResultsDir: cli.CacheDir,
+		ResultsDir: cacheDir,
 		BaseRef:    cli.BaseRef,
 		Path:       ".",
 		Writer:     os.Stdout,
