@@ -4,8 +4,10 @@ package benchstatter
 import (
 	"bufio"
 	"bytes"
+	"encoding/csv"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/monochromegane/mdt"
@@ -153,8 +155,13 @@ func csv2Markdown(data []byte) ([]string, error) {
 	}
 	var mdTables []string
 	for _, csvTable := range csvTables {
+		var buf bytes.Buffer
+		err = reFloatCsv(&buf, bytes.NewReader(csvTable))
+		if err != nil {
+			return nil, err
+		}
 		var mdTable string
-		mdTable, err = mdt.Convert("", bytes.NewReader(csvTable))
+		mdTable, err = mdt.Convert("", &buf)
 		if err != nil {
 			return nil, err
 		}
@@ -166,6 +173,37 @@ func csv2Markdown(data []byte) ([]string, error) {
 // MarkdownFormatterOptions options for a markdown OutputFormatter
 type MarkdownFormatterOptions struct {
 	CSVFormatterOptions
+}
+
+func reFloatCsv(dest io.Writer, src io.Reader) error {
+	csvSrc := csv.NewReader(src)
+	csvSrc.FieldsPerRecord = -1
+	csvDest := csv.NewWriter(dest)
+	var err error
+	var row []string
+	for {
+		row, err = csvSrc.Read()
+		if err != nil {
+			break
+		}
+		for i, val := range row {
+			f, fErr := strconv.ParseFloat(val, 64)
+			if fErr != nil {
+				continue
+			}
+			row[i] = strconv.FormatFloat(f, 'f', -1, 64)
+		}
+		err = csvDest.Write(row)
+		if err != nil {
+			break
+		}
+	}
+	if err != io.EOF {
+		return err
+	}
+
+	csvDest.Flush()
+	return csvDest.Error()
 }
 
 // MarkdownFormatter return a markdown OutputFormatter
