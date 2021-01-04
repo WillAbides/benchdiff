@@ -87,6 +87,7 @@ var groupHelp = kong.Vars{
 
 var cli struct {
 	Version kong.VersionFlag `kong:"help=${VersionHelp}"`
+	Debug   bool             `kong:"help='write verbose output to stderr'"`
 
 	BaseRef   string        `kong:"default=HEAD,help=${BaseRefHelp},group='x'"`
 	Cooldown  time.Duration `kong:"default='100ms',help=${CooldownHelp},group='x'"`
@@ -248,6 +249,9 @@ func main() {
 		Force:      cli.ForceBase,
 		GitCmd:     cli.GitCmd,
 		BasePause:  cli.Cooldown,
+	}
+	if cli.Debug {
+		bd.DebugOut = os.Stderr
 	}
 	result, err := bd.Run()
 	kctx.FatalIfErrorf(err)

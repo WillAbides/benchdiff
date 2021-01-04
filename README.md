@@ -36,6 +36,7 @@ More documentation at https://github.com/willabides/benchdiff.
 Flags:
   -h, --help       Show context-sensitive help.
       --version    Output the benchdiff version and exit.
+      --debug      write verbose output to stderr
 
       --base-ref="HEAD"    The git ref to be used as a baseline.
       --cooldown=100ms     How long to pause for cooldown between head and base runs.

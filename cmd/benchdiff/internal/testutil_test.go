@@ -44,7 +44,7 @@ func mustGit(t *testing.T, repoPath string, args ...string) []byte {
 		"GIT_COMMITTER_NAME":  "committer",
 		"GIT_COMMITTER_EMAIL": "committer@localhost",
 	})
-	got, err := runGitCmd("git", repoPath, args...)
+	got, err := runGitCmd(nil, "git", repoPath, args...)
 	assert.NoErrorf(t, err, "error running git:\noutput: %v", string(got))
 	return got
 }

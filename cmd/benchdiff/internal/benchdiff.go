@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,6 +32,7 @@ type Benchdiff struct {
 	Force      bool
 	JSONOutput bool
 	BasePause  time.Duration
+	DebugOut   io.Writer
 }
 
 type runBenchmarksResults struct {
@@ -57,6 +60,11 @@ func (c *Benchdiff) cacheKey() string {
 }
 
 func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
+	debugOut := c.DebugOut
+	if debugOut == nil {
+		debugOut = ioutil.Discard
+	}
+	debug := log.New(debugOut, "", 0)
 	gitCmd := c.GitCmd
 	if gitCmd == "" {
 		gitCmd = "git"
@@ -75,21 +83,23 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		}
 	}()
 
+	headWriter := io.MultiWriter(debug.Writer(), worktreeFile)
 	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
 	result.benchmarkCmd = cmd.String()
-	cmd.Stdout = worktreeFile
+	cmd.Stdout = headWriter
+	debug.Printf(cmd.String())
 	err = cmd.Run()
 	if err != nil {
 		return nil, err
 	}
 
-	headSHA, err := runGitCmd(gitCmd, c.Path, "rev-parse", "HEAD")
+	headSHA, err := runGitCmd(debug, gitCmd, c.Path, "rev-parse", "HEAD")
 	if err != nil {
 		return nil, err
 	}
 	result.headSHA = strings.TrimSpace(string(headSHA))
 
-	baseSHA, err := runGitCmd(gitCmd, c.Path, "rev-parse", c.BaseRef)
+	baseSHA, err := runGitCmd(debug, gitCmd, c.Path, "rev-parse", c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
@@ -116,11 +126,12 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		}
 	}()
 
+	baseWriter := io.MultiWriter(debug.Writer(), baseFile)
 	baseCmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	baseCmd.Stdout = baseFile
+	baseCmd.Stdout = baseWriter
 	var baseCmdErr error
-
-	err = runAtGitRef(gitCmd, c.Path, c.BaseRef, c.BasePause, func() {
+	debug.Printf(cmd.String())
+	err = runAtGitRef(debug, gitCmd, c.Path, c.BaseRef, c.BasePause, func() {
 		baseCmdErr = baseCmd.Run()
 	})
 	if err != nil {
