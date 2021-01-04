@@ -164,6 +164,17 @@ func TestBenchstat_Run(t *testing.T) {
 			},
 		},
 		{
+			golden: "packagesmd",
+			base:   "packagesold.txt",
+			head:   "packagesnew.txt",
+			b: &Benchstat{
+				OutputFormatter: MarkdownFormatter(&MarkdownFormatterOptions{
+					HeaderLevel: 2,
+				}),
+				SplitBy: []string{"pkg", "goos", "goarch"},
+			},
+		},
+		{
 			golden: "units",
 			base:   "units-old.txt",
 			head:   "units-new.txt",
