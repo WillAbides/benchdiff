@@ -23,6 +23,9 @@ func TestBenchstat_Run(t *testing.T) {
 		require.NoError(t, os.Chdir(pwd))
 	})
 	for _, td := range goldenTests {
+		if td.name != "packagesmd" {
+			continue
+		}
 		t.Run(td.name, func(t *testing.T) {
 			result, err := td.benchStat.Run(td.base, td.head)
 			require.NoError(t, err)
@@ -188,10 +191,8 @@ var goldenTests = []*goldenTest{
 		base: "packagesold.txt",
 		head: "packagesnew.txt",
 		benchStat: &Benchstat{
-			OutputFormatter: MarkdownFormatter(&MarkdownFormatterOptions{
-				HeaderLevel: 2,
-			}),
-			SplitBy: []string{"pkg", "goos", "goarch"},
+			OutputFormatter: MarkdownFormatter(nil),
+			SplitBy:         []string{"pkg", "goos", "note"},
 		},
 	},
 	{

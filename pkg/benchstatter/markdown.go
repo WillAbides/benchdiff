@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/csv"
-	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -84,7 +84,6 @@ func csv2Markdown(data []byte) ([]string, error) {
 
 // MarkdownFormatterOptions options for a markdown OutputFormatter
 type MarkdownFormatterOptions struct {
-	HeaderLevel int
 	CSVFormatterOptions
 }
 
@@ -124,10 +123,6 @@ func FormatMarkdown(w io.Writer, tables []*benchstat.Table, opts *MarkdownFormat
 	if opts == nil {
 		opts = new(MarkdownFormatterOptions)
 	}
-	hPrefix := ""
-	if opts.HeaderLevel >= 0 {
-		hPrefix = strings.Repeat("#", opts.HeaderLevel+1)
-	}
 	csvFormatter := CSVFormatter(&opts.CSVFormatterOptions)
 	tables = splitTablesByGroup(tables)
 	tmpTables := make([]*benchstat.Table, 0, len(tables))
@@ -146,7 +141,7 @@ func FormatMarkdown(w io.Writer, tables []*benchstat.Table, opts *MarkdownFormat
 	}
 
 	for groupIdx, group := range groups {
-		err := writeGroupMarkdown(w, tables, groupIdx, group, hPrefix, csvFormatter)
+		err := writeGroupMarkdown(w, tables, groupIdx, group, csvFormatter)
 		if err != nil {
 			return err
 		}
@@ -154,15 +149,17 @@ func FormatMarkdown(w io.Writer, tables []*benchstat.Table, opts *MarkdownFormat
 	return nil
 }
 
-func writeGroupMarkdown(w io.Writer, tables []*benchstat.Table, groupIdx int, group, hPrefix string, csvFormatter OutputFormatter) error {
+func writeGroupMarkdown(w io.Writer, tables []*benchstat.Table, groupIdx int, group string, csvFormatter OutputFormatter) error {
 	var err error
 	var groupHeader string
 	if groupIdx > 0 {
 		groupHeader += "\n"
 	}
-	if strings.TrimSpace(group) != "" {
-		groupHeader += fmt.Sprintf("%s %s\n\n", hPrefix, group)
+	fg := formatGroup(group)
+	if fg != "" {
+		groupHeader += fg + "\n\n"
 	}
+
 	if len(groupHeader) > 0 {
 		_, err = w.Write([]byte(groupHeader))
 		if err != nil {
@@ -211,4 +208,11 @@ func addStringIfMissing(s string, slice []string) []string {
 	}
 	slice = append(slice, s)
 	return slice
+}
+
+var formatGroupRegexp = regexp.MustCompile(`\s*([^:^ ]+:)\s?`)
+
+func formatGroup(group string) string {
+	g := formatGroupRegexp.ReplaceAllString(group, "\n${1} ")
+	return strings.TrimSpace(g)
 }

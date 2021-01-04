@@ -1,4 +1,6 @@
-### pkg:encoding/gob
+pkg: encoding/gob
+goos: darwin
+note: hw acceleration enabled
 
 | name      | old time/op (ns/op) | ±   | new time/op (ns/op) | ±   | delta   | ±               |
 | --------- | ------------------- | --- | ------------------- | --- | ------- | --------------- |
@@ -8,7 +10,9 @@
 | --------- | ---------------- | --- | ---------------- | --- | ------- | --------------- |
 | GobEncode | 56.44            | 1%  | 65.108           | 1%  | +15.36% | (p=0.016 n=4+5) |
 
-### pkg:encoding/json
+pkg: encoding/json
+goos: darwin
+note: hw acceleration enabled
 
 | name       | old time/op (ns/op) | ±   | new time/op (ns/op) | ±   | delta | ±               |
 | ---------- | ------------------- | --- | ------------------- | --- | ----- | --------------- |
