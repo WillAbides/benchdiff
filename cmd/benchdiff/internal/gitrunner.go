@@ -3,52 +3,36 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"os/exec"
-	"path/filepath"
 	"time"
 )
 
 func runGitCmd(debug *log.Logger, gitCmd, repoPath string, args ...string) ([]byte, error) {
-	if debug == nil {
-		debug = log.New(ioutil.Discard, "", 0)
-	}
-
+	var stdout bytes.Buffer
 	cmd := exec.Command(gitCmd, args...) //nolint:gosec // this is fine
-	var err error
-	cmd.Dir, err = filepath.Abs(repoPath)
-	if err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	out := io.MultiWriter(&buf, debug.Writer())
-	debug.Printf(cmd.String())
-	cmd.Stdout = out
-	err = cmd.Run()
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		err = fmt.Errorf("error running git command: %s", string(exitErr.Stderr))
-	}
-	return bytes.TrimSpace(buf.Bytes()), err
+	cmd.Stdout = &stdout
+	cmd.Dir = repoPath
+	err := runCmd(cmd, debug)
+	return bytes.TrimSpace(stdout.Bytes()), err
 }
 
 func stashAndReset(debug *log.Logger, gitCmd, repoPath string) (revert func() error, err error) {
 	revert = func() error {
 		return nil
 	}
-	stash, err := runGitCmd(debug, gitCmd, repoPath, "stash", "create", "--quiet")
+	stash, err := runGitCmd(debug, gitCmd, repoPath, "stash", "create")
 	if err != nil {
 		return nil, err
 	}
 	stash = bytes.TrimSpace(stash)
 	if len(stash) > 0 {
 		revert = func() error {
-			_, revertErr := runGitCmd(debug, gitCmd, repoPath, "stash", "apply", "--quiet", string(stash))
+			_, revertErr := runGitCmd(debug, gitCmd, repoPath, "stash", "apply", string(stash))
 			return revertErr
 		}
 	}
-	_, err = runGitCmd(debug, gitCmd, repoPath, "reset", "--hard", "--quiet")
+	_, err = runGitCmd(debug, gitCmd, repoPath, "reset", "--hard")
 	if err != nil {
 		return nil, err
 	}

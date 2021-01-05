@@ -32,7 +32,7 @@ type Benchdiff struct {
 	Force      bool
 	JSONOutput bool
 	BasePause  time.Duration
-	DebugOut   io.Writer
+	Debug      *log.Logger
 }
 
 type runBenchmarksResults struct {
@@ -59,18 +59,45 @@ func (c *Benchdiff) cacheKey() string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
-	debugOut := c.DebugOut
-	if debugOut == nil {
-		debugOut = ioutil.Discard
+// runCmd runs cmd sending its stdout and stderr to debug.Write()
+func runCmd(cmd *exec.Cmd, debug *log.Logger) error {
+	if debug == nil {
+		debug = log.New(ioutil.Discard, "", 0)
 	}
-	debug := log.New(debugOut, "", 0)
+	var bufStderr bytes.Buffer
+	stderr := io.MultiWriter(&bufStderr, debug.Writer())
+	if cmd.Stderr != nil {
+		stderr = io.MultiWriter(cmd.Stderr, stderr)
+	}
+	cmd.Stderr = stderr
+	stdout := debug.Writer()
+	if cmd.Stdout != nil {
+		stdout = io.MultiWriter(cmd.Stdout, stdout)
+	}
+	cmd.Stdout = stdout
+	debug.Printf("+ %s", cmd)
+	err := cmd.Run()
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		err = fmt.Errorf(`error running command: %s
+exit code: %d
+stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
+	}
+	return err
+}
+
+func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
+	debug := c.Debug
+	if debug == nil {
+		debug = log.New(ioutil.Discard, "", 0)
+	}
 	gitCmd := c.GitCmd
 	if gitCmd == "" {
 		gitCmd = "git"
 	}
 
-	result = new(runBenchmarksResults)
+	result = &runBenchmarksResults{
+		benchmarkCmd: fmt.Sprintf("%s %s", c.BenchCmd, c.BenchArgs),
+	}
 	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
 	worktreeFile, err := os.Create(worktreeFilename)
 	if err != nil {
@@ -83,12 +110,9 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		}
 	}()
 
-	headWriter := io.MultiWriter(debug.Writer(), worktreeFile)
 	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	result.benchmarkCmd = cmd.String()
-	cmd.Stdout = headWriter
-	debug.Printf(cmd.String())
-	err = cmd.Run()
+	cmd.Stdout = worktreeFile
+	err = runCmd(cmd, debug)
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +150,12 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		}
 	}()
 
-	baseWriter := io.MultiWriter(debug.Writer(), baseFile)
-	baseCmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	baseCmd.Stdout = baseWriter
+	cmd = exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
+	cmd.Stdout = baseFile
+
 	var baseCmdErr error
-	debug.Printf(cmd.String())
 	err = runAtGitRef(debug, gitCmd, c.Path, c.BaseRef, c.BasePause, func() {
-		baseCmdErr = baseCmd.Run()
+		baseCmdErr = runCmd(cmd, debug)
 	})
 	if err != nil {
 		return nil, err

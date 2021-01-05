@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -251,7 +252,7 @@ func main() {
 		BasePause:  cli.Cooldown,
 	}
 	if cli.Debug {
-		bd.DebugOut = os.Stderr
+		bd.Debug = log.New(os.Stderr, "", 0)
 	}
 	result, err := bd.Run()
 	kctx.FatalIfErrorf(err)
