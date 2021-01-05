@@ -51,6 +51,20 @@ func fileExists(path string) bool {
 	return true
 }
 
+func (c *Benchdiff) debug() *log.Logger {
+	if c.Debug == nil {
+		return log.New(ioutil.Discard, "", 0)
+	}
+	return c.Debug
+}
+
+func (c *Benchdiff) gitCmd() string {
+	if c.GitCmd == "" {
+		return "git"
+	}
+	return c.GitCmd
+}
+
 func (c *Benchdiff) cacheKey() string {
 	var b []byte
 	b = append(b, []byte(c.BenchCmd)...)
@@ -85,83 +99,77 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 	return err
 }
 
-func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
-	debug := c.Debug
-	if debug == nil {
-		debug = log.New(ioutil.Discard, "", 0)
-	}
-	gitCmd := c.GitCmd
-	if gitCmd == "" {
-		gitCmd = "git"
+func (c *Benchdiff) runBenchmark(ref, filename string, force bool) (err error) {
+	c.debug().Printf("output file: %s", filename)
+	if ref != "" && !force {
+		if fileExists(filename) {
+			c.debug().Printf("+ skipping benchmark for ref %q because output file exists", ref)
+			return nil
+		}
 	}
 
-	result = &runBenchmarksResults{
-		benchmarkCmd: fmt.Sprintf("%s %s", c.BenchCmd, c.BenchArgs),
-	}
-	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
-	worktreeFile, err := os.Create(worktreeFilename)
+	file, err := os.Create(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() {
-		cErr := worktreeFile.Close()
+		cErr := file.Close()
 		if err == nil {
 			err = cErr
 		}
 	}()
 
 	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	cmd.Stdout = worktreeFile
-	err = runCmd(cmd, debug)
+	cmd.Stdout = file
+	var runErr error
+	if ref == "" {
+		return runCmd(cmd, c.debug())
+	}
+	err = runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, c.BasePause, func() {
+		runErr = runCmd(cmd, c.debug())
+	})
+	if err != nil {
+		return err
+	}
+	return runErr
+}
+
+func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
+	gitCmd := c.GitCmd
+	if gitCmd == "" {
+		gitCmd = "git"
+	}
+
+	headSHA, err := runGitCmd(c.debug(), gitCmd, c.Path, "rev-parse", "HEAD")
 	if err != nil {
 		return nil, err
 	}
 
-	headSHA, err := runGitCmd(debug, gitCmd, c.Path, "rev-parse", "HEAD")
+	baseSHA, err := runGitCmd(c.debug(), gitCmd, c.Path, "rev-parse", c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
-	result.headSHA = strings.TrimSpace(string(headSHA))
-
-	baseSHA, err := runGitCmd(debug, gitCmd, c.Path, "rev-parse", c.BaseRef)
-	if err != nil {
-		return nil, err
-	}
-	result.baseSHA = strings.TrimSpace(string(baseSHA))
 
 	baseFilename := fmt.Sprintf("benchdiff-%s-%s.out", baseSHA, c.cacheKey())
 	baseFilename = filepath.Join(c.ResultsDir, baseFilename)
 
-	result.baseOutputFile = baseFilename
-	result.worktreeOutputFile = worktreeFilename
+	worktreeFilename := filepath.Join(c.ResultsDir, "benchdiff-worktree.out")
 
-	if fileExists(baseFilename) && !c.Force {
-		return result, nil
+	result = &runBenchmarksResults{
+		benchmarkCmd:       fmt.Sprintf("%s %s", c.BenchCmd, c.BenchArgs),
+		headSHA:            strings.TrimSpace(string(headSHA)),
+		baseSHA:            strings.TrimSpace(string(baseSHA)),
+		baseOutputFile:     baseFilename,
+		worktreeOutputFile: worktreeFilename,
 	}
 
-	baseFile, err := os.Create(baseFilename)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		cErr := baseFile.Close()
-		if err == nil {
-			err = cErr
-		}
-	}()
-
-	cmd = exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	cmd.Stdout = baseFile
-
-	var baseCmdErr error
-	err = runAtGitRef(debug, gitCmd, c.Path, c.BaseRef, c.BasePause, func() {
-		baseCmdErr = runCmd(cmd, debug)
-	})
+	err = c.runBenchmark(c.BaseRef, baseFilename, c.Force)
 	if err != nil {
 		return nil, err
 	}
 
-	if baseCmdErr != nil {
+	err = c.runBenchmark("", worktreeFilename, false)
+	if err != nil {
 		return nil, err
 	}
 
