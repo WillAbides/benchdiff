@@ -21,18 +21,20 @@ import (
 
 // Benchdiff runs benchstats and outputs their deltas
 type Benchdiff struct {
-	BenchCmd   string
-	BenchArgs  string
-	ResultsDir string
-	BaseRef    string
-	Path       string
-	GitCmd     string
-	Writer     io.Writer
-	Benchstat  *benchstatter.Benchstat
-	Force      bool
-	JSONOutput bool
-	BasePause  time.Duration
-	Debug      *log.Logger
+	BenchCmd    string
+	BenchArgs   string
+	ResultsDir  string
+	BaseRef     string
+	Path        string
+	GitCmd      string
+	Writer      io.Writer
+	Benchstat   *benchstatter.Benchstat
+	Force       bool
+	JSONOutput  bool
+	Cooldown    time.Duration
+	WarmupCount int
+	WarmupTime  time.Duration
+	Debug       *log.Logger
 }
 
 type runBenchmarksResults struct {
@@ -99,33 +101,39 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 	return err
 }
 
-func (c *Benchdiff) runBenchmark(ref, filename string, force bool) (err error) {
-	c.debug().Printf("output file: %s", filename)
-	if ref != "" && !force {
-		if fileExists(filename) {
-			c.debug().Printf("+ skipping benchmark for ref %q because output file exists", ref)
-			return nil
+func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) (err error) {
+	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...) //nolint:gosec // this is fine
+
+	if filename != "" {
+		var file *os.File
+		c.debug().Printf("output file: %s", filename)
+		if ref != "" && !force {
+			if fileExists(filename) {
+				c.debug().Printf("+ skipping benchmark for ref %q because output file exists", ref)
+				return nil
+			}
 		}
+		file, err = os.Create(filename)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			cErr := file.Close()
+			if err == nil {
+				err = cErr
+			}
+		}()
+		cmd.Stdout = file
 	}
 
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		cErr := file.Close()
-		if err == nil {
-			err = cErr
-		}
-	}()
-
-	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs)...) //nolint:gosec // this is fine
-	cmd.Stdout = file
 	var runErr error
 	if ref == "" {
 		return runCmd(cmd, c.debug())
 	}
-	err = runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, c.BasePause, func() {
+	err = runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func() {
+		if pause > 0 {
+			time.Sleep(pause)
+		}
 		runErr = runCmd(cmd, c.debug())
 	})
 	if err != nil {
@@ -163,12 +171,30 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 		worktreeOutputFile: worktreeFilename,
 	}
 
-	err = c.runBenchmark(c.BaseRef, baseFilename, c.Force)
+	doWarmup := c.WarmupCount > 0
+
+	warmupArgs := fmt.Sprintf("-count %d", c.WarmupCount)
+	if c.WarmupTime != 0 {
+		warmupArgs = fmt.Sprintf("%s -benchtime %s", warmupArgs, c.WarmupTime)
+	}
+
+	var cooldown time.Duration
+
+	if doWarmup {
+		err = c.runBenchmark(c.BaseRef, "", warmupArgs, cooldown, c.Force)
+		if err != nil {
+			return nil, err
+		}
+		cooldown = c.Cooldown
+	}
+
+	err = c.runBenchmark(c.BaseRef, baseFilename, "", cooldown, c.Force)
 	if err != nil {
 		return nil, err
 	}
+	cooldown = c.Cooldown
 
-	err = c.runBenchmark("", worktreeFilename, false)
+	err = c.runBenchmark("", worktreeFilename, "", cooldown, false)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"time"
 )
 
 func runGitCmd(debug *log.Logger, gitCmd, repoPath string, args ...string) ([]byte, error) {
@@ -39,7 +38,7 @@ func stashAndReset(debug *log.Logger, gitCmd, repoPath string) (revert func() er
 	return revert, nil
 }
 
-func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, pause time.Duration, fn func()) error {
+func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, fn func()) error {
 	origRef, err := runGitCmd(nil, gitCmd, repoPath, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return err
@@ -68,7 +67,6 @@ func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, pause time.Dur
 			fmt.Println(cerr)
 		}
 	}()
-	time.Sleep(pause)
 	fn()
 	return nil
 }

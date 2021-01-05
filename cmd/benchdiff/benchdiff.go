@@ -78,6 +78,8 @@ var benchVars = kong.Vars{
 	"ShowBenchCmdlineHelp": `Instead of running benchmarks, output the command that would be used and exit.`,
 	"CPUHelp":              `Specify a list of GOMAXPROCS values for which the benchmarks should be executed. The default is the current value of GOMAXPROCS.`,
 	"BenchmemHelp":         `Memory allocation statistics for benchmarks.`,
+	"WarmupCountHelp":      `Run benchmarks with -count=n as a warmup`,
+	"WarmupTimeHelp":       `When warmups are run, set -benchtime=n`,
 }
 
 var groupHelp = kong.Vars{
@@ -107,6 +109,8 @@ var cli struct {
 	CPU              CPUFlag              `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS,...'"`
 	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
 	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
+	WarmupCount      int                  `kong:"help=${WarmupCountHelp},group='gotest'"`
+	WarmupTime       time.Duration        `kong:"help=${WarmupTimeHelp},group='gotest'"`
 
 	BenchstatOpts benchstatOpts `kong:"embed"`
 
@@ -240,16 +244,18 @@ func main() {
 	kctx.FatalIfErrorf(err)
 
 	bd := &internal.Benchdiff{
-		BenchCmd:   cli.BenchmarkCmd,
-		BenchArgs:  benchArgs,
-		ResultsDir: cacheDir,
-		BaseRef:    cli.BaseRef,
-		Path:       ".",
-		Writer:     os.Stdout,
-		Benchstat:  bStat,
-		Force:      cli.ForceBase,
-		GitCmd:     cli.GitCmd,
-		BasePause:  cli.Cooldown,
+		BenchCmd:    cli.BenchmarkCmd,
+		BenchArgs:   benchArgs,
+		ResultsDir:  cacheDir,
+		BaseRef:     cli.BaseRef,
+		Path:        ".",
+		Writer:      os.Stdout,
+		Benchstat:   bStat,
+		Force:       cli.ForceBase,
+		GitCmd:      cli.GitCmd,
+		Cooldown:    cli.Cooldown,
+		WarmupTime:  cli.WarmupTime,
+		WarmupCount: cli.WarmupCount,
 	}
 	if cli.Debug {
 		bd.Debug = log.New(os.Stderr, "", 0)
