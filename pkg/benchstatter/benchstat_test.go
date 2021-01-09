@@ -3,6 +3,7 @@ package benchstatter
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,16 +24,15 @@ func TestBenchstat_Run(t *testing.T) {
 		require.NoError(t, os.Chdir(pwd))
 	})
 	for _, td := range goldenTests {
-		if td.name != "packagesmd" {
-			continue
-		}
 		t.Run(td.name, func(t *testing.T) {
-			result, err := td.benchStat.Run(td.base, td.head)
+			var result *benchstat.Collection
+			result, err = td.benchStat.Run(td.base, td.head)
 			require.NoError(t, err)
 			var buf bytes.Buffer
 			err = td.benchStat.OutputTables(&buf, result.Tables())
 			require.NoError(t, err)
-			want, err := ioutil.ReadFile(td.name + ".golden")
+			var want []byte
+			want, err = ioutil.ReadFile(goldenFile(td))
 			require.NoError(t, err)
 			require.Equal(t, string(want), buf.String())
 		})
@@ -48,13 +48,13 @@ type goldenTest struct {
 
 var goldenTests = []*goldenTest{
 	{
-		name:      "example",
+		name:      "example.txt",
 		base:      "exampleold.txt",
 		head:      "examplenew.txt",
 		benchStat: new(Benchstat),
 	},
 	{
-		name: "examplehtml",
+		name: "example.html",
 		base: "exampleold.txt",
 		head: "examplenew.txt",
 		benchStat: &Benchstat{
@@ -62,7 +62,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "examplecsv",
+		name: "example.csv",
 		base: "exampleold.txt",
 		head: "examplenew.txt",
 		benchStat: &Benchstat{
@@ -70,7 +70,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "examplemd",
+		name: "example.md",
 		base: "exampleold.txt",
 		head: "examplenew.txt",
 		benchStat: &Benchstat{
@@ -78,7 +78,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "examplecsv-norange",
+		name: "example-norange.csv",
 		base: "exampleold.txt",
 		head: "examplenew.txt",
 		benchStat: &Benchstat{
@@ -88,7 +88,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "examplemd-norange",
+		name: "example-norange.md",
 		base: "exampleold.txt",
 		head: "examplenew.txt",
 		benchStat: &Benchstat{
@@ -100,13 +100,13 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name:      "oldnew",
+		name:      "oldnew.txt",
 		base:      "old.txt",
 		head:      "new.txt",
 		benchStat: new(Benchstat),
 	},
 	{
-		name: "oldnewgeo",
+		name: "oldnewgeo.txt",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -114,7 +114,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "oldnewgeocsv",
+		name: "oldnewgeo.csv",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -123,13 +123,13 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name:      "new4",
+		name:      "new4.txt",
 		base:      "new.txt",
 		head:      "slashslash4.txt",
 		benchStat: new(Benchstat),
 	},
 	{
-		name: "oldnewhtml",
+		name: "oldnew.html",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -137,7 +137,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "oldnewcsv",
+		name: "oldnew.csv",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -145,7 +145,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "oldnewmd",
+		name: "oldnew.md",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -153,7 +153,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "oldnewgeomd",
+		name: "oldnewgeo.md",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -162,7 +162,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "oldnewttest",
+		name: "oldnewttest.txt",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -170,7 +170,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "packages",
+		name: "packages.txt",
 		base: "packagesold.txt",
 		head: "packagesnew.txt",
 		benchStat: &Benchstat{
@@ -178,7 +178,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "packagescsv",
+		name: "packages.csv",
 		base: "packagesold.txt",
 		head: "packagesnew.txt",
 		benchStat: &Benchstat{
@@ -187,7 +187,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "packagesmd",
+		name: "packages.md",
 		base: "packagesold.txt",
 		head: "packagesnew.txt",
 		benchStat: &Benchstat{
@@ -196,13 +196,13 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name:      "units",
+		name:      "units.txt",
 		base:      "units-old.txt",
 		head:      "units-new.txt",
 		benchStat: new(Benchstat),
 	},
 	{
-		name: "zero",
+		name: "zero.txt",
 		base: "zero-old.txt",
 		head: "zero-new.txt",
 		benchStat: &Benchstat{
@@ -210,7 +210,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "namesort",
+		name: "namesort.txt",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -218,7 +218,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "deltasort",
+		name: "deltasort.txt",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -226,7 +226,7 @@ var goldenTests = []*goldenTest{
 		},
 	},
 	{
-		name: "rdeltasort",
+		name: "rdeltasort.txt",
 		base: "old.txt",
 		head: "new.txt",
 		benchStat: &Benchstat{
@@ -265,7 +265,7 @@ func updateGolden() (err error) {
 	if err != nil {
 		return err
 	}
-	files, err := filepath.Glob("*.golden")
+	files, err := filepath.Glob("*golden*")
 	if err != nil {
 		return err
 	}
@@ -286,10 +286,14 @@ func updateGolden() (err error) {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(td.name+".golden", buf.Bytes(), 0o600)
+		err = ioutil.WriteFile(goldenFile(td), buf.Bytes(), 0o600)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func goldenFile(td *goldenTest) string {
+	return fmt.Sprintf("_golden-%s", td.name)
 }
