@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/monochromegane/mdt"
+	"github.com/olekukonko/tablewriter"
 	"golang.org/x/perf/benchstat"
 )
 
@@ -67,13 +68,14 @@ func csv2Markdown(data []byte) ([]string, error) {
 	}
 	var mdTables []string
 	for _, csvTable := range csvTables {
-		var buf bytes.Buffer
-		err = reFloatCsv(&buf, bytes.NewReader(csvTable))
+		var rows [][]string
+		rows, err = buildRows(csvTable)
 		if err != nil {
 			return nil, err
 		}
+
 		var mdTable string
-		mdTable, err = mdt.Convert("", &buf)
+		mdTable, err = buildMD(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -82,40 +84,45 @@ func csv2Markdown(data []byte) ([]string, error) {
 	return mdTables, nil
 }
 
+func buildMD(rows [][]string) (string, error) {
+	var buf bytes.Buffer
+	if len(rows) < 2 {
+		return "", fmt.Errorf("need at least one row plus header")
+	}
+	hRow := rows[0]
+	rows = rows[1:]
+	table := tablewriter.NewWriter(&buf)
+	table.SetHeader(hRow)
+	table.SetAutoFormatHeaders(false)
+	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+	table.SetCenterSeparator("|")
+	table.AppendBulk(rows)
+	table.Render()
+	return buf.String(), nil
+}
+
 // MarkdownFormatterOptions options for a markdown OutputFormatter
 type MarkdownFormatterOptions struct {
 	CSVFormatterOptions
 }
 
-func reFloatCsv(dest io.Writer, src io.Reader) error {
-	csvSrc := csv.NewReader(src)
-	csvSrc.FieldsPerRecord = -1
-	csvDest := csv.NewWriter(dest)
-	var err error
-	var row []string
-	for {
-		row, err = csvSrc.Read()
-		if err != nil {
-			break
-		}
-		for i, val := range row {
+func buildRows(src []byte) ([][]string, error) {
+	cRdr := csv.NewReader(bytes.NewReader(src))
+	cRdr.FieldsPerRecord = -1
+	rows, err := cRdr.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		for j, val := range rows[i] {
 			f, fErr := strconv.ParseFloat(val, 64)
 			if fErr != nil {
 				continue
 			}
-			row[i] = strconv.FormatFloat(f, 'f', -1, 64)
-		}
-		err = csvDest.Write(row)
-		if err != nil {
-			break
+			rows[i][j] = strconv.FormatFloat(f, 'f', -1, 64)
 		}
 	}
-	if err != io.EOF {
-		return err
-	}
-
-	csvDest.Flush()
-	return csvDest.Error()
+	return rows, nil
 }
 
 // FormatMarkdown formats benchstat output as markdown
