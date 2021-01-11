@@ -104,13 +104,13 @@ var cli struct {
 	BenchmarkArgs    string               `kong:"placeholder='args',help=${BenchmarkArgsHelp},group='gotest'"`
 	BenchmarkCmd     string               `kong:"default=${BenchCmdDefault},help=${BenchCmdHelp},group='gotest'"`
 	Benchmem         bool                 `kong:"help=${BenchmemHelp},group='gotest'"`
-	Benchtime        time.Duration        `kong:"help=${BenchtimeHelp},group='gotest'"`
+	Benchtime        string               `kong:"help=${BenchtimeHelp},group='gotest'"`
 	Count            int                  `kong:"default=10,help=${CountHelp},group='gotest'"`
 	CPU              CPUFlag              `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS,...'"`
 	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
 	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
 	WarmupCount      int                  `kong:"help=${WarmupCountHelp},group='gotest'"`
-	WarmupTime       time.Duration        `kong:"help=${WarmupTimeHelp},group='gotest'"`
+	WarmupTime       string               `kong:"help=${WarmupTimeHelp},group='gotest'"`
 
 	BenchstatOpts benchstatOpts `kong:"embed"`
 

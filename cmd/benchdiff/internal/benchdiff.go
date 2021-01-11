@@ -33,7 +33,7 @@ type Benchdiff struct {
 	JSONOutput  bool
 	Cooldown    time.Duration
 	WarmupCount int
-	WarmupTime  time.Duration
+	WarmupTime  string
 	Debug       *log.Logger
 }
 
@@ -174,7 +174,7 @@ func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
 	doWarmup := c.WarmupCount > 0
 
 	warmupArgs := fmt.Sprintf("-count %d", c.WarmupCount)
-	if c.WarmupTime != 0 {
+	if c.WarmupTime != "" {
 		warmupArgs = fmt.Sprintf("%s -benchtime %s", warmupArgs, c.WarmupTime)
 	}
 
