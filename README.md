@@ -65,6 +65,7 @@ Flags:
       --packages="./..."       Run benchmarks in these packages.
       --show-bench-cmdline     Instead of running benchmarks, output the command that would be used
                                and exit.
+      --tags=STRING            Set the -tags flag on the go test command
       --warmup-count=INT       Run benchmarks with -count=n as a warmup
       --warmup-time=STRING     When warmups are run, set -benchtime=n
 
