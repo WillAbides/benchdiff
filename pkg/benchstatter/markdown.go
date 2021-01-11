@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/olekukonko/tablewriter"
+	"github.com/willabides/mdtable"
 	"golang.org/x/perf/benchstat"
 )
 
@@ -76,6 +76,7 @@ func csv2Markdown(data []byte) ([]string, error) {
 
 		var mdTable string
 		mdTable, err = buildMD(rows)
+		mdTable += "\n"
 		if err != nil {
 			return nil, err
 		}
@@ -85,20 +86,20 @@ func csv2Markdown(data []byte) ([]string, error) {
 }
 
 func buildMD(rows [][]string) (string, error) {
-	var buf bytes.Buffer
 	if len(rows) < 2 {
 		return "", fmt.Errorf("need at least one row plus header")
 	}
-	hRow := rows[0]
-	rows = rows[1:]
-	table := tablewriter.NewWriter(&buf)
-	table.SetHeader(hRow)
-	table.SetAutoFormatHeaders(false)
-	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-	table.SetCenterSeparator("|")
-	table.AppendBulk(rows)
-	table.Render()
-	return buf.String(), nil
+
+	table := new(mdtable.Table)
+	table.SetHeaderAlignment(mdtable.AlignCenter)
+	table.SetData(rows)
+	for i, s := range rows[0] {
+		if strings.Contains(s, "(") {
+			table.SetColumnAlignment(i, mdtable.AlignRight)
+		}
+	}
+
+	return string(table.Render()), nil
 }
 
 // MarkdownFormatterOptions options for a markdown OutputFormatter
