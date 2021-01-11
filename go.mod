@@ -4,9 +4,8 @@ go 1.15
 
 require (
 	github.com/alecthomas/kong v0.2.12
-	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/olekukonko/tablewriter v0.0.4
 	github.com/stretchr/testify v1.5.1
+	github.com/willabides/mdtable v0.1.0
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/perf v0.0.0-20201207232921-bdcc6220ee90
 )
