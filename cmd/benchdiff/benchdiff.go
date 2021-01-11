@@ -23,6 +23,7 @@ const defaultBenchArgsTmpl = `test {{ .Packages }} -run '^$'
 {{- if .Count }} -count {{ .Count }}{{end}}
 {{- if .Benchtime }} -benchtime {{ .Benchtime }}{{end}}
 {{- if .CPU }} -cpu {{ .CPU }}{{ end }}
+{{- if .Tags }} -tags "{{ .Tags }}"{{ end }}
 {{- if .Benchmem }} -benchmem{{ end }}`
 
 var benchstatVars = kong.Vars{
@@ -80,6 +81,7 @@ var benchVars = kong.Vars{
 	"BenchmemHelp":         `Memory allocation statistics for benchmarks.`,
 	"WarmupCountHelp":      `Run benchmarks with -count=n as a warmup`,
 	"WarmupTimeHelp":       `When warmups are run, set -benchtime=n`,
+	"TagsHelp":             `Set the -tags flag on the go test command`,
 }
 
 var groupHelp = kong.Vars{
@@ -109,6 +111,7 @@ var cli struct {
 	CPU              CPUFlag              `kong:"help=${CPUHelp},group='gotest',placeholder='GOMAXPROCS,...'"`
 	Packages         string               `kong:"default='./...',help=${PackagesHelp},group='gotest'"`
 	ShowBenchCmdline ShowBenchCmdlineFlag `kong:"help=${ShowBenchCmdlineHelp},group='gotest'"`
+	Tags             string               `kong:"help=${TagsHelp},group='gotest'"`
 	WarmupCount      int                  `kong:"help=${WarmupCountHelp},group='gotest'"`
 	WarmupTime       string               `kong:"help=${WarmupTimeHelp},group='gotest'"`
 
