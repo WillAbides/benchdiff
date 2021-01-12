@@ -120,6 +120,8 @@ var cli struct {
 	CacheDir     string           `kong:"type=dir,help=${CacheDirHelp},group='cache'"`
 	ClearCache   ClearCacheFlag   `kong:"help=${ClearCacheHelp},group='cache'"`
 	ShowCacheDir ShowCacheDirFlag `kong:"help=${ShowCacheDirHelp},group='cache'"`
+
+	ShowDefaultTemplate showDefaultTemplate `kong:"hidden"`
 }
 
 // ShowCacheDirFlag flag for showing the cache directory
@@ -132,6 +134,14 @@ func (v ShowCacheDirFlag) AfterApply(app *kong.Kong) error {
 		return err
 	}
 	fmt.Fprintln(app.Stdout, cacheDir)
+	app.Exit(0)
+	return nil
+}
+
+type showDefaultTemplate bool
+
+func (v showDefaultTemplate) BeforeApply(app *kong.Kong) error {
+	fmt.Println(defaultBenchArgsTmpl)
 	app.Exit(0)
 	return nil
 }

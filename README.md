@@ -95,14 +95,17 @@ pass in the raw values or use a go template.
 
 Default value:
 
+<!--- start template --->
 ```
 test {{ .Packages }} -run '^$'
 {{- if .Bench }} -bench {{ .Bench }}{{end}}
 {{- if .Count }} -count {{ .Count }}{{end}}
 {{- if .Benchtime }} -benchtime {{ .Benchtime }}{{end}}
 {{- if .CPU }} -cpu {{ .CPU }}{{ end }}
+{{- if .Tags }} -tags "{{ .Tags }}"{{ end }}
 {{- if .Benchmem }} -benchmem{{ end }}
 ```
+<!--- end template --->
 
 ## Install
 
