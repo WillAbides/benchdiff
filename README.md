@@ -20,6 +20,10 @@ These are the basic steps `benchdiff` performs:
 - Switches back to the original git HEAD and restores the state from stash
 - Runs `benchstat` to compare the base and head results from cache.
 
+## GitHub Action
+
+benchdiff can be run as a GitHub Action. https://github.com/WillAbides/benchdiff-action
+
 ## Usage
 
 ### `benchdiff --help` output
