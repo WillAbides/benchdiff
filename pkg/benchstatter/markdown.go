@@ -90,16 +90,17 @@ func buildMD(rows [][]string) (string, error) {
 		return "", fmt.Errorf("need at least one row plus header")
 	}
 
-	table := new(mdtable.Table)
-	table.SetHeaderAlignment(mdtable.AlignCenter)
-	table.SetData(rows)
+	opts := []mdtable.Option{
+		mdtable.HeaderAlignment(mdtable.AlignCenter),
+	}
+
 	for i, s := range rows[0] {
 		if strings.Contains(s, "(") {
-			table.SetColumnAlignment(i, mdtable.AlignRight)
+			opts = append(opts, mdtable.ColumnAlignment(i, mdtable.AlignRight))
 		}
 	}
 
-	return string(table.Render()), nil
+	return string(mdtable.Generate(rows, opts...)), nil
 }
 
 // MarkdownFormatterOptions options for a markdown OutputFormatter
