@@ -12,6 +12,7 @@ import (
 
 func setupTestRepo(t *testing.T, path string) {
 	t.Helper()
+	mustGo(t, path, "mod", "init", "bindiff.test")
 	ex1 := filepath.Join(path, "ex1.go")
 	ex1test := filepath.Join(path, "ex1_test.go")
 	err := ioutil.WriteFile(ex1, []byte(ex1Rev1), 0o600)
@@ -41,7 +42,7 @@ func testInDir(t *testing.T, dir string) {
 }
 
 func TestBenchdiff_Run(t *testing.T) {
-	dir := tmpDir(t)
+	dir := t.TempDir()
 	setupTestRepo(t, dir)
 	testInDir(t, dir)
 	differ := Benchdiff{

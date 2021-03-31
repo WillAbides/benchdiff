@@ -1,33 +1,12 @@
 package internal
 
 import (
-	"io/ioutil"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-var preserveTmpDir bool
-
-func tmpDir(t *testing.T) string {
-	t.Helper()
-	projectTmp := filepath.FromSlash("../../../tmp")
-
-	err := os.MkdirAll(projectTmp, 0o700)
-	assert.NoError(t, err)
-	tmpdir, err := ioutil.TempDir(projectTmp, "")
-	assert.NoError(t, err)
-	t.Cleanup(func() {
-		if preserveTmpDir {
-			t.Logf("tmp dir preserved at %s", tmpdir)
-			return
-		}
-		assert.NoError(t, os.RemoveAll(tmpdir))
-	})
-	return tmpdir
-}
 
 func mustSetEnv(t *testing.T, env map[string]string) {
 	t.Helper()
@@ -46,5 +25,14 @@ func mustGit(t *testing.T, repoPath string, args ...string) []byte {
 	})
 	got, err := runGitCmd(nil, "git", repoPath, args...)
 	assert.NoErrorf(t, err, "error running git:\noutput: %v", string(got))
+	return got
+}
+
+func mustGo(t *testing.T, path string, args ...string) []byte {
+	t.Helper()
+	cmd := exec.Command("go", args...)
+	cmd.Dir = path
+	got, err := cmd.Output()
+	assert.NoErrorf(t, err, "error running go:\noutput: %v", string(got))
 	return got
 }

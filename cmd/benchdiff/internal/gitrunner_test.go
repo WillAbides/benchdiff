@@ -9,7 +9,7 @@ import (
 )
 
 func Test_runAtGitRef(t *testing.T) {
-	dir := tmpDir(t)
+	dir := t.TempDir()
 	fooPath := filepath.Join(dir, "foo")
 	err := ioutil.WriteFile(fooPath, []byte("OG content"), 0o600)
 	require.NoError(t, err)
