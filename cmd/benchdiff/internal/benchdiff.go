@@ -130,10 +130,11 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 	if ref == "" {
 		return runCmd(cmd, c.debug())
 	}
-	err = runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func() {
+	err = runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func(workPath string) {
 		if pause > 0 {
 			time.Sleep(pause)
 		}
+		cmd.Dir = workPath
 		runErr = runCmd(cmd, c.debug())
 	})
 	if err != nil {

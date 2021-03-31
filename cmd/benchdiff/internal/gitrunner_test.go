@@ -21,11 +21,12 @@ func Test_runAtGitRef(t *testing.T) {
 	require.NoError(t, err)
 	err = ioutil.WriteFile(fooPath, []byte("new content"), 0o600)
 	require.NoError(t, err)
-	fn := func() {
-		var got, gotUntracked []byte
-		gotUntracked, err = ioutil.ReadFile(untrackedPath)
-		require.NoError(t, err)
-		require.Equal(t, "untracked", string(gotUntracked))
+	fn := func(workDir string) {
+		var got []byte
+		untrackedPath := filepath.Join(workDir, "untracked")
+		_, err = ioutil.ReadFile(untrackedPath)
+		require.Error(t, err)
+		fooPath := filepath.Join(workDir, "foo")
 		got, err = ioutil.ReadFile(fooPath)
 		require.NoError(t, err)
 		require.Equal(t, "OG content", string(got))

@@ -3,7 +3,9 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 )
 
@@ -16,50 +18,20 @@ func runGitCmd(debug *log.Logger, gitCmd, repoPath string, args ...string) ([]by
 	return bytes.TrimSpace(stdout.Bytes()), err
 }
 
-func stashAndReset(debug *log.Logger, gitCmd, repoPath string) (revert func() error, err error) {
-	revert = func() error {
-		return nil
-	}
-	stash, err := runGitCmd(debug, gitCmd, repoPath, "stash", "create")
+func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, fn func(path string)) error {
+	worktree, err := ioutil.TempDir("", "bindiff")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	stash = bytes.TrimSpace(stash)
-	if len(stash) > 0 {
-		revert = func() error {
-			_, revertErr := runGitCmd(debug, gitCmd, repoPath, "stash", "apply", string(stash))
-			return revertErr
-		}
-	}
-	_, err = runGitCmd(debug, gitCmd, repoPath, "reset", "--hard")
-	if err != nil {
-		return nil, err
-	}
-	return revert, nil
-}
+	defer os.RemoveAll(worktree)
 
-func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, fn func()) error {
-	origRef, err := runGitCmd(nil, gitCmd, repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+	_, err = runGitCmd(debug, gitCmd, repoPath, "worktree", "add", "--quiet", "--detach", worktree, ref)
 	if err != nil {
 		return err
 	}
-	origRef = bytes.TrimSpace(origRef)
-	unstash, err := stashAndReset(debug, gitCmd, repoPath)
-	if err != nil {
-		return err
-	}
+
 	defer func() {
-		unstashErr := unstash()
-		if unstashErr != nil {
-			panic(unstashErr)
-		}
-	}()
-	_, err = runGitCmd(debug, gitCmd, repoPath, "checkout", "--quiet", ref)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_, cerr := runGitCmd(debug, gitCmd, repoPath, "checkout", "--quiet", string(origRef))
+		_, cerr := runGitCmd(debug, gitCmd, repoPath, "worktree", "remove", worktree)
 		if cerr != nil {
 			if exitErr, ok := cerr.(*exec.ExitError); ok {
 				fmt.Println(string(exitErr.Stderr))
@@ -67,6 +39,6 @@ func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, fn func()) err
 			fmt.Println(cerr)
 		}
 	}()
-	fn()
+	fn(worktree)
 	return nil
 }
