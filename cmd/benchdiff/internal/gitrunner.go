@@ -19,11 +19,16 @@ func runGitCmd(debug *log.Logger, gitCmd, repoPath string, args ...string) ([]by
 }
 
 func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, fn func(path string)) error {
-	worktree, err := ioutil.TempDir("", "bindiff")
+	worktree, err := ioutil.TempDir("", "benchdiff")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(worktree)
+	defer func() {
+		rErr := os.RemoveAll(worktree)
+		if rErr != nil {
+			fmt.Printf("Could not delete temp directory: %s\n", worktree)
+		}
+	}()
 
 	_, err = runGitCmd(debug, gitCmd, repoPath, "worktree", "add", "--quiet", "--detach", worktree, ref)
 	if err != nil {

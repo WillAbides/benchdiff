@@ -26,8 +26,8 @@ func Test_runAtGitRef(t *testing.T) {
 		untrackedPath := filepath.Join(workDir, "untracked")
 		_, err = ioutil.ReadFile(untrackedPath)
 		require.Error(t, err)
-		fooPath := filepath.Join(workDir, "foo")
-		got, err = ioutil.ReadFile(fooPath)
+		wdFooPath := filepath.Join(workDir, "foo")
+		got, err = ioutil.ReadFile(wdFooPath)
 		require.NoError(t, err)
 		require.Equal(t, "OG content", string(got))
 	}
