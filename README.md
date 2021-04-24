@@ -14,10 +14,8 @@ It essentially combines multiple `git`, `go test -bench` and `benchstat` command
 
 These are the basic steps `benchdiff` performs:
 - Runs `go test -bench ...` on your current worktree and saves the results to a cache directory.
-- Creates a git stash with the current state of your worktree
-- Switches to the base ref (usually "HEAD" or "master").
-- Runs `go test -bench ...` and saves the results to cache again.
-- Switches back to the original git HEAD and restores the state from stash
+- Creates a new worktree at the base ref
+- Runs `go test -bench ...` on the base worktree and saves the results to cache again.
 - Runs `benchstat` to compare the base and head results from cache.
 
 ## GitHub Action
@@ -42,51 +40,51 @@ Flags:
       --version    Output the benchdiff version and exit.
       --debug      write verbose output to stderr
 
-      --base-ref="HEAD"    The git ref to be used as a baseline.
-      --cooldown=100ms     How long to pause for cooldown between head and base runs.
-      --force-base         Rerun benchmarks on the base reference even if the output already exists.
-      --git-cmd="git"      The executable to use for git commands.
-      --json               Format output as JSON.
-      --on-degrade=0       Exit code when there is a statistically significant degradation in the
-                           results.
-      --tolerance=10.0     The minimum percent change before a result is considered degraded.
+  --base-ref="HEAD"    The git ref to be used as a baseline.
+  --cooldown=100ms     How long to pause for cooldown between head and base runs.
+  --force-base         Rerun benchmarks on the base reference even if the output already exists.
+  --git-cmd="git"      The executable to use for git commands.
+  --json               Format output as JSON.
+  --on-degrade=0       Exit code when there is a statistically significant degradation in the
+                       results.
+  --tolerance=10.0     The minimum percent change before a result is considered degraded.
 
-  benchmark command line:
-      --bench="."              Run only those benchmarks matching a regular expression. To run all
-                               benchmarks, use '--bench .'.
-      --benchmark-args=args    Override the default args to the go command. This may be a template.
-                               See https://github.com/willabides/benchdiff for details."
-      --benchmark-cmd="go"     The command to use for benchmarks.
-      --benchmem               Memory allocation statistics for benchmarks.
-      --benchtime=STRING       Run enough iterations of each benchmark to take t, specified as a
-                               time.Duration (for example, --benchtime 1h30s). The default is 1
-                               second (1s). The special syntax Nx means to run the benchmark N times
-                               (for example, -benchtime 100x).
-      --count=10               Run each benchmark n times. If --cpu is set, run n times for each
-                               GOMAXPROCS value.'
-      --cpu=GOMAXPROCS,...     Specify a list of GOMAXPROCS values for which the benchmarks should
-                               be executed. The default is the current value of GOMAXPROCS.
-      --packages="./..."       Run benchmarks in these packages.
-      --show-bench-cmdline     Instead of running benchmarks, output the command that would be used
-                               and exit.
-      --tags=STRING            Set the -tags flag on the go test command
-      --warmup-count=INT       Run benchmarks with -count=n as a warmup
-      --warmup-time=STRING     When warmups are run, set -benchtime=n
+benchmark command line
+  --bench="."              Run only those benchmarks matching a regular expression. To run all
+                           benchmarks, use '--bench .'.
+  --benchmark-args=args    Override the default args to the go command. This may be a template. See
+                           https://github.com/willabides/benchdiff for details."
+  --benchmark-cmd="go"     The command to use for benchmarks.
+  --benchmem               Memory allocation statistics for benchmarks.
+  --benchtime=STRING       Run enough iterations of each benchmark to take t, specified as a
+                           time.Duration (for example, --benchtime 1h30s). The default is 1 second
+                           (1s). The special syntax Nx means to run the benchmark N times (for
+                           example, -benchtime 100x).
+  --count=10               Run each benchmark n times. If --cpu is set, run n times for each
+                           GOMAXPROCS value.'
+  --cpu=GOMAXPROCS,...     Specify a list of GOMAXPROCS values for which the benchmarks should be
+                           executed. The default is the current value of GOMAXPROCS.
+  --packages="./..."       Run benchmarks in these packages.
+  --show-bench-cmdline     Instead of running benchmarks, output the command that would be used and
+                           exit.
+  --tags=STRING            Set the -tags flag on the go test command
+  --warmup-count=INT       Run benchmarks with -count=n as a warmup
+  --warmup-time=STRING     When warmups are run, set -benchtime=n
 
-  benchstat options:
-      --alpha=0.05                 consider change significant if p < α
-      --benchstat-output="text"    format for benchstat output (csv,html,markdown or text)
-      --delta-test="utest"         significance test to apply to delta: utest, ttest, or none
-      --geomean                    print the geometric mean of each file
-      --norange                    suppress range columns (CSV and markdown only)
-      --reverse-sort               reverse sort order
-      --sort="none"                sort by order: delta, name, none
-      --split="pkg,goos,goarch"    split benchmarks by labels
+benchstat options
+  --alpha=0.05                 consider change significant if p < α
+  --benchstat-output="text"    format for benchstat output (csv,html,markdown or text)
+  --delta-test="utest"         significance test to apply to delta: utest, ttest, or none
+  --geomean                    print the geometric mean of each file
+  --norange                    suppress range columns (CSV and markdown only)
+  --reverse-sort               reverse sort order
+  --sort="none"                sort by order: delta, name, none
+  --split="pkg,goos,goarch"    split benchmarks by labels
 
-  benchmark result cache:
-      --cache-dir=STRING    Override the default directory where benchmark output is kept.
-      --clear-cache         Remove benchdiff files from the cache dir.
-      --show-cache-dir      Output the cache dir and exit.
+benchmark result cache
+  --cache-dir=STRING    Override the default directory where benchmark output is kept.
+  --clear-cache         Remove benchdiff files from the cache dir.
+  --show-cache-dir      Output the cache dir and exit.
 ```
 <!--- end usage output --->
 

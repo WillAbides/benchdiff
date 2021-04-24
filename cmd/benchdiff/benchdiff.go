@@ -13,7 +13,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/willabides/benchdiff/cmd/benchdiff/internal"
-	"github.com/willabides/benchdiff/cmd/benchdiff/internal/helpprinter"
 	"github.com/willabides/benchdiff/pkg/benchstatter"
 	"golang.org/x/perf/benchstat"
 )
@@ -243,8 +242,13 @@ func main() {
 	benchVars["CacheDirDefault"] = filepath.Join(userCacheDir, "benchdiff")
 
 	kctx := kong.Parse(&cli, benchstatVars, benchVars, groupHelp,
-		kong.Help(helpprinter.NewHelpPrinter(nil)),
 		kong.Description(strings.TrimSpace(description)),
+		kong.ExplicitGroups([]kong.Group{
+			{Key: "benchstat", Title: "benchstat options"},
+			{Key: "cache", Title: "benchmark result cache"},
+			{Key: "gotest", Title: "benchmark command line"},
+			{Key: "x"},
+		}),
 	)
 
 	benchArgs, err := getBenchArgs()
