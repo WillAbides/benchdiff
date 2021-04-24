@@ -2,18 +2,6 @@ systems:
 - darwin/amd64
 - linux/amd64
 dependencies:
-  benchd:
-    template: benchdiff#benchdiff
-    vars:
-      version: 0.4.3
-  benchdi:
-    template: benchdiff#benchdiff
-    vars:
-      version: 0.4.3
-  gobin:
-    template: origin#gobin
-    vars:
-      version: 0.0.14
   gofumpt:
     template: gofumpt
     vars:
