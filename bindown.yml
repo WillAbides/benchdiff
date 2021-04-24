@@ -2,22 +2,14 @@ systems:
 - darwin/amd64
 - linux/amd64
 dependencies:
-  benchd:
-    template: benchdiff#benchdiff
+  gofumpt:
+    template: gofumpt
     vars:
-      version: 0.4.3
-  benchdi:
-    template: benchdiff#benchdiff
-    vars:
-      version: 0.4.3
-  gobin:
-    template: origin#gobin
-    vars:
-      version: 0.0.14
+      version: 0.1.1
   golangci-lint:
     template: origin#golangci-lint
     vars:
-      version: 1.28.2
+      version: 1.39.0
   goreleaser:
     template: origin#goreleaser
     vars:
@@ -25,7 +17,7 @@ dependencies:
   shellcheck:
     template: origin#shellcheck
     vars:
-      version: 0.7.1
+      version: 0.7.2
 templates:
   benchdiff:
     url: https://github.com/WillAbides/benchdiff/releases/download/v{{.version}}/benchdiff_{{.version}}_{{.os}}_{{.arch}}.tar.gz
@@ -35,36 +27,21 @@ templates:
     - darwin/amd64
     - linux/386
     - linux/amd64
-  benchdiff#benchdiff:
-    url: https://github.com/WillAbides/benchdiff/releases/download/v{{.version}}/benchdiff_{{.version}}_{{.os}}_{{.arch}}.tar.gz
+  gofumpt:
+    url: https://github.com/mvdan/gofumpt/releases/download/v{{.version}}/gofumpt_v{{.version}}_{{.os}}_{{.arch}}{{.suffix}}
+    archive_path: gofumpt_v{{.version}}_{{.os}}_{{.arch}}{{.suffix}}
+    bin: gofumpt{{.suffix}}
+    vars:
+      suffix: ""
     required_vars:
     - version
-    systems:
-    - darwin/amd64
-    - linux/386
-    - linux/amd64
-  origin#gobin:
-    url: https://github.com/myitcv/gobin/releases/download/v{{.version}}/{{.os}}-{{.arch}}
-    archive_path: '{{.os}}-{{.arch}}'
-    bin: gobin
-    required_vars:
-    - version
-    systems:
-    - darwin/386
-    - darwin/amd64
-    - freebsd/386
-    - freebsd/amd64
-    - freebsd/arm
-    - linux/386
-    - linux/amd64
-    - linux/arm
-    - netbsd/386
-    - netbsd/amd64
-    - netbsd/arm
-    - openbsd/386
-    - openbsd/amd64
-    - windows/386
-    - windows/amd64
+    overrides:
+    - matcher:
+        os:
+        - windows
+      dependency:
+        vars:
+          suffix: .exe
   origin#golangci-lint:
     url: https://github.com/golangci/golangci-lint/releases/download/v{{.version}}/golangci-lint-{{.version}}-{{.os}}-{{.arch}}{{.urlsuffix}}
     archive_path: golangci-lint-{{.version}}-{{.os}}-{{.arch}}/golangci-lint{{.archivepathsuffix}}
@@ -152,11 +129,11 @@ template_sources:
   benchdiff: https://raw.githubusercontent.com/WillAbides/benchdiff/main/bindown.yml
   origin: https://raw.githubusercontent.com/WillAbides/bindown-templates/master/bindown.yml
 url_checksums:
-  https://github.com/golangci/golangci-lint/releases/download/v1.28.2/golangci-lint-1.28.2-darwin-amd64.tar.gz: 6e6952a4d72906f6265c379743f274b7609a289cc9cbb19bf6ff94e6f8f00daf
-  https://github.com/golangci/golangci-lint/releases/download/v1.28.2/golangci-lint-1.28.2-linux-amd64.tar.gz: c893b07dd7d2c8e13b6380dd52781bb6732f7f541d90da2dc941be5f7e8be6fb
+  https://github.com/golangci/golangci-lint/releases/download/v1.39.0/golangci-lint-1.39.0-darwin-amd64.tar.gz: 7e9a47ab540aa3e8472fbf8120d28bed3b9d9cf625b955818e8bc69628d7187c
+  https://github.com/golangci/golangci-lint/releases/download/v1.39.0/golangci-lint-1.39.0-linux-amd64.tar.gz: 3a73aa7468087caa62673c8adea99b4e4dff846dc72707222db85f8679b40cbf
   https://github.com/goreleaser/goreleaser/releases/download/v0.143.0/goreleaser_Darwin_x86_64.tar.gz: 0b713827a2c0e21238a211899e6eb81f23c2dc7c9b39ecb426b06ed6efbce568
   https://github.com/goreleaser/goreleaser/releases/download/v0.143.0/goreleaser_Linux_x86_64.tar.gz: cc435eb337889d41414de80fd8474806187a3e908754cbf4599aa0a7604a3134
-  https://github.com/koalaman/shellcheck/releases/download/v0.7.1/shellcheck-v0.7.1.darwin.x86_64.tar.xz: b080c3b659f7286e27004aa33759664d91e15ef2498ac709a452445d47e3ac23
-  https://github.com/koalaman/shellcheck/releases/download/v0.7.1/shellcheck-v0.7.1.linux.x86_64.tar.xz: 64f17152d96d7ec261ad3086ed42d18232fcb65148b44571b564d688269d36c8
-  https://github.com/myitcv/gobin/releases/download/v0.0.14/darwin-amd64: 08db3d50eea308b475d591d43efc160c7c44f4666da4f2fd103864a9d038b230
-  https://github.com/myitcv/gobin/releases/download/v0.0.14/linux-amd64: 5bc800e8be7eaefcb86780786c38b75243082685a17ceea3c2235e06b8259151
+  https://github.com/koalaman/shellcheck/releases/download/v0.7.2/shellcheck-v0.7.2.darwin.x86_64.tar.xz: 969bd7ef668e8167cfbba569fb9f4a0b2fc1c4021f87032b6a0b0e525fb77369
+  https://github.com/koalaman/shellcheck/releases/download/v0.7.2/shellcheck-v0.7.2.linux.x86_64.tar.xz: 70423609f27b504d6c0c47e340f33652aea975e45f312324f2dbf91c95a3b188
+  https://github.com/mvdan/gofumpt/releases/download/v0.1.1/gofumpt_v0.1.1_darwin_amd64: 97e4d6d97d70ba6d5177b1fbbbdf7e447bce69b8ccfb0ea64b75699a8393a095
+  https://github.com/mvdan/gofumpt/releases/download/v0.1.1/gofumpt_v0.1.1_linux_amd64: 8884cb7b22d09bc8920748db5756d276ddfdb9e0f9a64edd6185b61a61e860ad
