@@ -12,7 +12,6 @@ linters:
   enable:
     - golint
     - gosec
-    - interfacer
     - unconvert
     - gocyclo
     - goconst
