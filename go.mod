@@ -1,6 +1,6 @@
 module github.com/willabides/benchdiff
 
-go 1.15
+go 1.16
 
 require (
 	github.com/alecthomas/kong v0.2.16
