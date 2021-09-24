@@ -104,6 +104,17 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) (err error) {
 	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...) //nolint:gosec // this is fine
 
+	stdlib := false
+	if rootPath, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", "--show-toplevel"); err == nil {
+		// lib/time/zoneinfo.zip is a specific enough path, and it's here to
+		// stay because it's one of the few paths hardcoded into Go binaries.
+		zoneinfoPath := filepath.Join(string(rootPath), "lib/time/zoneinfo.zip")
+		if _, err := os.Stat(zoneinfoPath); err == nil {
+			stdlib = true
+			cmd.Path = filepath.Join(string(rootPath), "bin/go")
+		}
+	}
+
 	if filename != "" {
 		var file *os.File
 		c.debug().Printf("output file: %s", filename)
@@ -134,7 +145,16 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 		if pause > 0 {
 			time.Sleep(pause)
 		}
-		cmd.Dir = workPath
+		if stdlib {
+			makeCmd := exec.Command(filepath.Join(workPath, "src", "make.bash"))
+			makeCmd.Dir = filepath.Join(workPath, "src")
+			runErr = runCmd(makeCmd, c.debug())
+			if runErr != nil {
+				return
+			}
+			cmd.Path = filepath.Join(workPath, "bin", "go")
+		}
+		cmd.Dir = workPath // TODO: add relative path of working directory
 		runErr = runCmd(cmd, c.debug())
 	})
 	if err != nil {
@@ -144,17 +164,12 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 }
 
 func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
-	gitCmd := c.GitCmd
-	if gitCmd == "" {
-		gitCmd = "git"
-	}
-
-	headSHA, err := runGitCmd(c.debug(), gitCmd, c.Path, "rev-parse", "HEAD")
+	headSHA, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", "HEAD")
 	if err != nil {
 		return nil, err
 	}
 
-	baseSHA, err := runGitCmd(c.debug(), gitCmd, c.Path, "rev-parse", c.BaseRef)
+	baseSHA, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", c.BaseRef)
 	if err != nil {
 		return nil, err
 	}
