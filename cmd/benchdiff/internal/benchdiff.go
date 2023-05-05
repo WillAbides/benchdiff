@@ -156,6 +156,7 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 		if stdlib {
 			makeCmd := exec.Command(filepath.Join(workPath, "src", "make.bash"))
 			makeCmd.Dir = filepath.Join(workPath, "src")
+			makeCmd.Env = append(os.Environ(), "GOOS=", "GOARCH=")
 			runErr = runCmd(makeCmd, c.debug())
 			if runErr != nil {
 				return
