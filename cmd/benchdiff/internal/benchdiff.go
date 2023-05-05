@@ -116,7 +116,6 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 	}
 
 	if filename != "" {
-		var file *os.File
 		c.debug().Printf("output file: %s", filename)
 		if ref != "" && !force {
 			if fileExists(filename) {
@@ -124,17 +123,26 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 				return nil
 			}
 		}
-		file, err = os.Create(filename)
-		if err != nil {
-			return err
-		}
+		buf := &bytes.Buffer{}
 		defer func() {
-			cErr := file.Close()
-			if err == nil {
+			if err != nil {
+				return
+			}
+			file, cErr := os.Create(filename)
+			if cErr != nil {
 				err = cErr
+				return
+			}
+			if _, wErr := file.Write(buf.Bytes()); wErr != nil {
+				err = wErr
+				return
+			}
+			if cErr := file.Close(); cErr != nil {
+				err = cErr
+				return
 			}
 		}()
-		cmd.Stdout = file
+		cmd.Stdout = buf
 	}
 
 	var runErr error
