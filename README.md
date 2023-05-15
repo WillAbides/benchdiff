@@ -52,8 +52,8 @@ Flags:
 benchmark command line
   --bench="."              Run only those benchmarks matching a regular expression. To run all
                            benchmarks, use '--bench .'.
-  --benchmark-args=args    Override the default args to the go command. This may be a template. See
-                           https://github.com/willabides/benchdiff for details."
+  --benchmark-args=args    Override the default args to the go command. This may be a template.
+                           See https://github.com/willabides/benchdiff for details."
   --benchmark-cmd="go"     The command to use for benchmarks.
   --benchmem               Memory allocation statistics for benchmarks.
   --benchtime=STRING       Run enough iterations of each benchmark to take t, specified as a
