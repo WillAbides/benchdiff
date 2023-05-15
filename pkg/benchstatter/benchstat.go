@@ -80,7 +80,7 @@ func (b *Benchstat) OutputTables(writer io.Writer, tables []*benchstat.Table) er
 // AddCollectionFiles adds files to a collection
 func AddCollectionFiles(c *benchstat.Collection, files ...string) error {
 	for _, file := range files {
-		f, err := os.Open(file) //nolint:gosec // this is fine
+		f, err := os.Open(file)
 		if err != nil {
 			return err
 		}
