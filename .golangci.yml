@@ -12,6 +12,7 @@ issues:
     - "G302: Expect file permissions to be 0600 or less"
     - "G304: Potential file inclusion via variable"
     - "G204: Subprocess launched with a potential tainted input or cmd arguments"
+    - "G306: Expect WriteFile permissions to be 0600 or less"
 linters:
   enable:
     - gosec
