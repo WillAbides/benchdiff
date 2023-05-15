@@ -2,7 +2,7 @@
 
 set -e
 
-CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+CDPATH="" cd -- "$(dirname -- "$0")/.."
 
-script/bindown install goreleaser > /dev/null
+script/bindown -q install goreleaser
 bin/goreleaser "$@"

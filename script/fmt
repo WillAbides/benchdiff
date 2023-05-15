@@ -2,10 +2,11 @@
 
 set -e
 
-CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+cd "$(git rev-parse --show-toplevel)"
 
-make -s bin/gofumpt bin/handcrafted >/dev/null
+script/bindown -q install gofumpt
+script/bindown -q install handcrafted
 
-git ls-files -o -c --exclude-standard '*.go' |
-  bin/handcrafted |
-  xargs bin/gofumpt -w -e -s
+git ls-files -o -c --exclude-standard -- *.go |
+ bin/handcrafted |
+ xargs bin/gofumpt -w
