@@ -101,7 +101,7 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 }
 
 func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) (errOut error) {
-	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...) //nolint:gosec // this is fine
+	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...)
 
 	stdlib := false
 	if rootPath, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", "--show-toplevel"); err == nil {
@@ -127,7 +127,6 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 			if errOut != nil {
 				return
 			}
-			//nolint:gosec // user provides filename
 			file, cErr := os.Create(filename)
 			if cErr != nil {
 				errOut = cErr
@@ -154,7 +153,6 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 			time.Sleep(pause)
 		}
 		if stdlib {
-			//nolint:gosec // workPath is a temp dir
 			makeCmd := exec.Command(filepath.Join(workPath, "src", "make.bash"))
 			makeCmd.Dir = filepath.Join(workPath, "src")
 			makeCmd.Env = append(os.Environ(), "GOOS=", "GOARCH=")

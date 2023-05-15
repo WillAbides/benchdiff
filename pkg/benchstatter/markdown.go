@@ -203,7 +203,7 @@ func writeGroupMarkdown(w io.Writer, tables []*benchstat.Table, groupIdx int, gr
 }
 
 // MarkdownFormatter return a markdown OutputFormatter
-func MarkdownFormatter(opts *MarkdownFormatterOptions) OutputFormatter { //nolint:gocyclo // punt this to later
+func MarkdownFormatter(opts *MarkdownFormatterOptions) OutputFormatter {
 	return func(w io.Writer, tables []*benchstat.Table) error {
 		return FormatMarkdown(w, tables, opts)
 	}
