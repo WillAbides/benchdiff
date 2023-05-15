@@ -100,8 +100,8 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 	return err
 }
 
-func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) (errOut error) {
-	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...)
+func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) error {
+	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...) //nolint:gosec // this is fine
 
 	stdlib := false
 	if rootPath, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", "--show-toplevel"); err == nil {
@@ -114,6 +114,7 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 		}
 	}
 
+	fileBuffer := &bytes.Buffer{}
 	if filename != "" {
 		c.debug().Printf("output file: %s", filename)
 		if ref != "" && !force {
@@ -122,53 +123,41 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 				return nil
 			}
 		}
-		buf := &bytes.Buffer{}
-		defer func() {
-			if errOut != nil {
-				return
-			}
-			file, cErr := os.Create(filename)
-			if cErr != nil {
-				errOut = cErr
-				return
-			}
-			if _, wErr := file.Write(buf.Bytes()); wErr != nil {
-				errOut = wErr
-				return
-			}
-			if cErr := file.Close(); cErr != nil {
-				errOut = cErr
-				return
-			}
-		}()
-		cmd.Stdout = buf
+		cmd.Stdout = fileBuffer
 	}
 
 	var runErr error
 	if ref == "" {
-		return runCmd(cmd, c.debug())
-	}
-	err := runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func(workPath string) {
-		if pause > 0 {
-			time.Sleep(pause)
-		}
-		if stdlib {
-			makeCmd := exec.Command(filepath.Join(workPath, "src", "make.bash"))
-			makeCmd.Dir = filepath.Join(workPath, "src")
-			makeCmd.Env = append(os.Environ(), "GOOS=", "GOARCH=")
-			runErr = runCmd(makeCmd, c.debug())
-			if runErr != nil {
-				return
-			}
-			cmd.Path = filepath.Join(workPath, "bin", "go")
-		}
-		cmd.Dir = workPath // TODO: add relative path of working directory
 		runErr = runCmd(cmd, c.debug())
-	})
-	if err != nil {
-		return err
+	} else {
+		err := runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func(workPath string) {
+			if pause > 0 {
+				time.Sleep(pause)
+			}
+			if stdlib {
+				makeCmd := exec.Command(filepath.Join(workPath, "src", "make.bash"))
+				makeCmd.Dir = filepath.Join(workPath, "src")
+				makeCmd.Env = append(os.Environ(), "GOOS=", "GOARCH=")
+				runErr = runCmd(makeCmd, c.debug())
+				if runErr != nil {
+					return
+				}
+				cmd.Path = filepath.Join(workPath, "bin", "go")
+			}
+			cmd.Dir = workPath // TODO: add relative path of working directory
+			runErr = runCmd(cmd, c.debug())
+		})
+		if err != nil {
+			return err
+		}
 	}
-	return runErr
+	if runErr != nil {
+		return runErr
+	}
+	if filename == "" {
+		return nil
+	}
+	return os.WriteFile(filename, fileBuffer.Bytes(), 0o666)
 }
 
 func (c *Benchdiff) runBenchmarks() (result *runBenchmarksResults, err error) {
