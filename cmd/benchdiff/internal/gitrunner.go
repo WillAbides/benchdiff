@@ -10,7 +10,7 @@ import (
 
 func runGitCmd(debug *log.Logger, gitCmd, repoPath string, args ...string) ([]byte, error) {
 	var stdout bytes.Buffer
-	cmd := exec.Command(gitCmd, args...) //nolint:gosec // this is fine
+	cmd := exec.Command(gitCmd, args...)
 	cmd.Stdout = &stdout
 	cmd.Dir = repoPath
 	err := runCmd(cmd, debug)
