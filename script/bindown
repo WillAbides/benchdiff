@@ -2,10 +2,12 @@
 
 set -e
 
-CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+CDPATH="" cd -- "$(dirname -- "$0")/.."
 
 mkdir -p bin
 
-[ -f bin/bindown ] || sh -c "$(curl -sfL https://github.com/WillAbides/bindown/releases/download/v3.4.2/bootstrap-bindown.sh)"
+[ -f bin/bindown ] || sh -c "$(
+  curl -sfL https://github.com/WillAbides/bindown/releases/download/v3.20.2/bootstrap-bindown.sh
+)"
 
 exec bin/bindown "$@"

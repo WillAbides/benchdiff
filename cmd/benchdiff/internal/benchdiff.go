@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -55,7 +54,7 @@ func fileExists(path string) bool {
 
 func (c *Benchdiff) debug() *log.Logger {
 	if c.Debug == nil {
-		return log.New(ioutil.Discard, "", 0)
+		return log.New(io.Discard, "", 0)
 	}
 	return c.Debug
 }
@@ -78,7 +77,7 @@ func (c *Benchdiff) cacheKey() string {
 // runCmd runs cmd sending its stdout and stderr to debug.Write()
 func runCmd(cmd *exec.Cmd, debug *log.Logger) error {
 	if debug == nil {
-		debug = log.New(ioutil.Discard, "", 0)
+		debug = log.New(io.Discard, "", 0)
 	}
 	var bufStderr bytes.Buffer
 	stderr := io.MultiWriter(&bufStderr, debug.Writer())
@@ -101,17 +100,17 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 	return err
 }
 
-func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) (err error) {
+func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) (errOut error) {
 	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...) //nolint:gosec // this is fine
 
 	stdlib := false
 	if rootPath, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", "--show-toplevel"); err == nil {
 		// lib/time/zoneinfo.zip is a specific enough path, and it's here to
 		// stay because it's one of the few paths hardcoded into Go binaries.
-		zoneinfoPath := filepath.Join(string(rootPath), "lib/time/zoneinfo.zip")
+		zoneinfoPath := filepath.Join(string(rootPath), "lib", "time", "zoneinfo.zip")
 		if _, err := os.Stat(zoneinfoPath); err == nil {
 			stdlib = true
-			cmd.Path = filepath.Join(string(rootPath), "bin/go")
+			cmd.Path = filepath.Join(string(rootPath), "bin", "go")
 		}
 	}
 
@@ -124,14 +123,15 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 				return nil
 			}
 		}
-		file, err = os.Create(filename)
+		//nolint:gosec // user provides filename
+		file, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
 		defer func() {
 			cErr := file.Close()
-			if err == nil {
-				err = cErr
+			if errOut == nil {
+				errOut = cErr
 			}
 		}()
 		cmd.Stdout = file
@@ -141,11 +141,12 @@ func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Dur
 	if ref == "" {
 		return runCmd(cmd, c.debug())
 	}
-	err = runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func(workPath string) {
+	err := runAtGitRef(c.debug(), c.gitCmd(), c.Path, c.BaseRef, func(workPath string) {
 		if pause > 0 {
 			time.Sleep(pause)
 		}
 		if stdlib {
+			//nolint:gosec // workPath is a temp dir
 			makeCmd := exec.Command(filepath.Join(workPath, "src", "make.bash"))
 			makeCmd.Dir = filepath.Join(workPath, "src")
 			runErr = runCmd(makeCmd, c.debug())

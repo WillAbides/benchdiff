@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,18 +14,18 @@ func setupTestRepo(t *testing.T, path string) {
 	mustGo(t, path, "mod", "init", "bindiff.test")
 	ex1 := filepath.Join(path, "ex1.go")
 	ex1test := filepath.Join(path, "ex1_test.go")
-	err := ioutil.WriteFile(ex1, []byte(ex1Rev1), 0o600)
+	err := os.WriteFile(ex1, []byte(ex1Rev1), 0o600)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(ex1test, []byte(ex1Bench), 0o600)
+	err = os.WriteFile(ex1test, []byte(ex1Bench), 0o600)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(path, ".gitignore"), []byte("tmp/\n"), 0o600)
+	err = os.WriteFile(filepath.Join(path, ".gitignore"), []byte("tmp/\n"), 0o600)
 	require.NoError(t, err)
 	mustGit(t, path, "init")
 	err = os.MkdirAll(filepath.Join(path, "tmp"), 0o700)
 	require.NoError(t, err)
 	mustGit(t, path, "add", ".")
 	mustGit(t, path, "commit", "-m", "initial commit")
-	err = ioutil.WriteFile(ex1, []byte(ex1Rev2), 0o600)
+	err = os.WriteFile(ex1, []byte(ex1Rev2), 0o600)
 	require.NoError(t, err)
 }
 

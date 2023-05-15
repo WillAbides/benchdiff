@@ -2,8 +2,9 @@
 
 set -e
 
-CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+CDPATH="" cd -- "$(dirname -- "$0")/.."
 
-make -s bin/golangci-lint bin/shellcheck
+script/bindown -q install golangci-lint
+script/bindown -q install shellcheck
 bin/golangci-lint run ./...
 bin/shellcheck script/*
