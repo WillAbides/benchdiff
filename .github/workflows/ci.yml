@@ -3,7 +3,7 @@ on: [push]
 jobs:
   cibuild:
     name: cibuild
-    runs-on: ubuntu-21.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: willabides/setup-go-faster@v1.6.0
