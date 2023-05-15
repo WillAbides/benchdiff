@@ -9,7 +9,7 @@ usage_pattern="<!--- start usage output --->*<!--- end usage output --->"
 usag_sub="$(cat <<EOF
 <!--- start usage output --->
 \`\`\`
-$(COLUMNS=100 script/benchdiff --help)
+$(COLUMNS=80 script/benchdiff --help)
 \`\`\`
 <!--- end usage output --->
 EOF
