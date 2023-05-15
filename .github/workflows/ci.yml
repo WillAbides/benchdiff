@@ -3,9 +3,9 @@ on: [push]
 jobs:
   cibuild:
     name: cibuild
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-21.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: willabides/setup-go-faster@v1.6.0
         with:
           go-version: '1.16.x'

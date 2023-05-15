@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func TestBenchstat_Run(t *testing.T) {
 			err = td.benchStat.OutputTables(&buf, result.Tables())
 			require.NoError(t, err)
 			var want []byte
-			want, err = ioutil.ReadFile(goldenFile(td))
+			want, err = os.ReadFile(goldenFile(td))
 			require.NoError(t, err)
 			require.Equal(t, string(want), buf.String())
 		})
@@ -286,7 +285,7 @@ func updateGolden() (err error) {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(goldenFile(td), buf.Bytes(), 0o600)
+		err = os.WriteFile(goldenFile(td), buf.Bytes(), 0o600)
 		if err != nil {
 			return err
 		}

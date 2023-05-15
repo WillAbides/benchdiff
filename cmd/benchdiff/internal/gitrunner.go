@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -19,7 +18,7 @@ func runGitCmd(debug *log.Logger, gitCmd, repoPath string, args ...string) ([]by
 }
 
 func runAtGitRef(debug *log.Logger, gitCmd, repoPath, ref string, fn func(path string)) error {
-	worktree, err := ioutil.TempDir("", "benchdiff")
+	worktree, err := os.MkdirTemp("", "benchdiff")
 	if err != nil {
 		return err
 	}
