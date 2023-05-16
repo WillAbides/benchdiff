@@ -101,7 +101,7 @@ stderr: %s`, cmd.String(), exitErr.ExitCode(), bufStderr.String())
 }
 
 func (c *Benchdiff) runBenchmark(ref, filename, extraArgs string, pause time.Duration, force bool) error {
-	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...) //nolint:gosec // this is fine
+	cmd := exec.Command(c.BenchCmd, strings.Fields(c.BenchArgs+" "+extraArgs)...)
 
 	stdlib := false
 	if rootPath, err := runGitCmd(c.debug(), c.gitCmd(), c.Path, "rev-parse", "--show-toplevel"); err == nil {
