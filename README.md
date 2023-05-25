@@ -2,6 +2,7 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/willabides/benchdiff.svg)](https://pkg.go.dev/github.com/willabides/benchdiff)
 [![ci](https://github.com/WillAbides/benchdiff/workflows/ci/badge.svg?branch=main&event=push)](https://github.com/WillAbides/benchdiff/actions?query=workflow%3Aci+branch%3Amain+event%3Apush)
+[![go-recipes](https://raw.githubusercontent.com/nikolaydubina/go-recipes/main/badge.svg?raw=true)](https://github.com/nikolaydubina/go-recipes)
 
 Benchdiff runs go benchmarks on your current git worktree and a base ref then uses benchstat to show
 the delta.
